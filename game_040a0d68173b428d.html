@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>知识探险转转乐 - 趣味教案 (PPT演示版)</title>
+    <style>
+        :root {
+            --primary-color: #FF6B6B;
+            --secondary-color: #4ECDC4;
+            --accent-color: #FFE66D;
+            --text-color: #2C3E50;
+            --bg-gradient: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            --font-family: "Microsoft YaHei", "Heiti SC", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: var(--font-family);
+            background: var(--bg-gradient);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- UI 组件 --- */
+        .hidden { display: none !important; }
+        .btn {
+            background: #fff;
+            border: 4px solid var(--text-color);
+            border-radius: 50px;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-color);
+            cursor: pointer;
+            box-shadow: 0 6px 0 var(--text-color);
+            transition: transform 0.1s, box-shadow 0.1s;
+            margin: 10px;
+            text-align: center;
+            outline: none;
+            appearance: none;
+        }
+        .btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 var(--text-color);
+        }
+        .btn-primary { background: var(--primary-color); color: white; border-color: #c0392b; box-shadow: 0 6px 0 #c0392b; }
+        .btn-success { background: var(--secondary-color); color: white; border-color: #16a085; box-shadow: 0 6px 0 #16a085; }
+
+        /* 全屏按钮 */
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 5000;
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            border: 2px solid var(--text-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s;
+        }
+        .fullscreen-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        /* --- 场景容器 --- */
+        #app {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 1. 加载页 */
+        #loading-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .loader {
+            width: 50px; height: 50px;
+            border: 5px solid var(--secondary-color);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* 2. 主菜单 */
+        #main-menu {
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.5s;
+        }
+        .title {
+            font-size: 3rem;
+            color: white;
+            text-shadow: 3px 3px 0px var(--text-color);
+            margin-bottom: 40px;
+            text-align: center;
+            padding: 0 20px;
+        }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 900px;
+            width: 90%;
+        }
+        .menu-card {
+            background: rgba(255,255,255,0.9);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 3px solid transparent;
+        }
+        .menu-card:hover { transform: scale(1.05); border-color: var(--secondary-color); }
+        .menu-icon { font-size: 3rem; margin-bottom: 10px; display: block; }
+        .menu-text { font-size: 1.5rem; font-weight: bold; color: var(--text-color); }
+
+        /* 3. 游戏主场景 */
+        #game-stage {
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .top-bar {
+            height: 80px;
+            min-height: 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            background: rgba(255,255,255,0.8);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding-right: 80px;
+            z-index: 100;
+        }
+        .score-board { font-size: 1.5rem; font-weight: bold; color: var(--text-color); }
+
+        .game-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        /* --- 模块A: 扭蛋机 --- */
+        #gacha-container { position: relative; width: 360px; height: 500px; }
+        #gacha-canvas { width: 100%; height: 100%; }
+        .gacha-controls {
+            position: absolute; bottom: -60px; left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+
+        /* --- 模块B: 大转盘 --- */
+        #wheel-container { position: relative; width: 400px; height: 400px; }
+        #wheel-canvas { width: 100%; height: 100%; transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1); }
+        .wheel-pointer {
+            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+            width: 40px; height: 50px; background: var(--primary-color);
+            clip-path: polygon(50% 100%, 0 0, 100% 0); z-index: 10;
+        }
+        .wheel-btn {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: #fff;
+            border: 4px solid var(--primary-color);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; cursor: pointer;
+            z-index: 11;
+            user-select: none;
+        }
+
+        /* --- 模块C: 卡片墙 --- */
+        #card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 15px;
+        }
+        .card {
+            width: 100%; height: 100%;
+            position: relative;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        .card-inner {
+            position: relative; width: 100%; height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card.flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back {
+            position: absolute; width: 100%; height: 100%;
+            -webkit-backface-visibility: hidden; backface-visibility: hidden;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 10px;
+            font-size: 2rem;
+        }
+        .card-front { background: var(--secondary-color); color: white; border: 4px solid white; }
+        .card-back { 
+            background: white; 
+            transform: rotateY(180deg); 
+            color: var(--text-color); 
+            padding: 5px; 
+            font-size: 0.9rem; 
+            border: 4px solid var(--secondary-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .card-img-container {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 5px;
+            overflow: hidden;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+        }
+        .card-img-small {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 4. 任务弹窗 (计分) */
+        #task-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 2200;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #task-modal.active { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: white; width: 90%; max-width: 500px;
+            border-radius: 20px; padding: 30px;
+            text-align: center;
+            position: relative;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .modal-type { font-size: 1.2rem; color: #888; margin-bottom: 10px; }
+        .modal-title { font-size: 2.5rem; color: var(--primary-color); margin-bottom: 20px; font-weight: bold; }
+        .modal-desc { font-size: 1.2rem; margin-bottom: 30px; line-height: 1.5; color: #555; }
+        .star-rating { font-size: 2rem; margin-bottom: 20px; color: #ddd; cursor: pointer; }
+        .star-rating span.active { color: gold; }
+
+        /* 5. 图片放大展示层 (PPT模式) */
+        #image-viewer-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 2100;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column;
+        }
+        .viewer-content {
+            text-align: center; color: white;
+            animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 90%;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .viewer-img-container {
+            max-width: 80vw;
+            max-height: 60vh;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            background: #fff;
+        }
+        .viewer-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .viewer-title { 
+            font-size: 4rem; 
+            margin: 10px 0; 
+            font-weight: bold; 
+            color: var(--accent-color);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .viewer-hint { 
+            font-size: 1.5rem; 
+            color: #ddd; 
+            margin-bottom: 40px; 
+            font-weight: normal;
+        }
+
+        /* 6. 奖励特效层 */
+        #reward-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 3000;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes zoomIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        @media (max-width: 600px) {
+            .title { font-size: 2rem; }
+            .menu-grid { grid-template-columns: 1fr; }
+            #card-grid { grid-template-columns: repeat(3, 90px); grid-template-rows: repeat(3, 90px); }
+            #wheel-container { width: 300px; height: 300px; }
+            #gacha-container { width: 300px; height: 400px; }
+            .viewer-title { font-size: 2rem; }
+            .viewer-hint { font-size: 1rem; }
+        }
+        
+        @media (max-height: 600px) {
+            .modal-content { max-height: 90vh; overflow-y: auto; }
+            .viewer-img-container { max-height: 50vh; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 全屏演示按钮 -->
+    <button class="fullscreen-btn" onclick="gameManager.toggleFullScreen()" title="全屏演示模式">⛶</button>
+
+    <!-- 加载页 -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p style="margin-top:20px; font-weight:bold; color:var(--text-color);">正在准备教案道具...</p>
+        <p style="margin-top:10px; font-size:0.9rem; color:#666;">建议点击右上角按钮全屏播放，体验更佳</p>
+    </div>
+
+    <!-- 主菜单 -->
+    <div id="main-menu" class="hidden">
+        <h1 class="title">✨ 知识探险转转乐 ✨</h1>
+        <div class="menu-grid">
+            <div class="menu-card" onclick="gameManager.enterModule('recitation')">
+                <span class="menu-icon">💊</span>
+                <div class="menu-text">必背课文</div>
+                <div style="font-size:0.8rem; color:#888;">扭蛋机挑战</div>
+            </div>
+            <div class="menu-card" onclick="gameManager.enterModule('accumulation')">
+                <span class="menu-icon">🎡</span>
+                <div class="menu-text">日积月累</div>
+                <div style="font-size:0.8rem; color:#888;">幸运大转盘</div>
+            </div>
+            <div class="menu-card" onclick="gameManager.enterModule('speaking')">
+                <span class="menu-icon">🖼️</span>
+                <div class="menu-text">看图说话</div>
+                <div style="font-size:0.8rem; color:#888;">神奇翻翻卡</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏主舞台 -->
+    <div id="game-stage" class="hidden">
+        <div class="top-bar">
+            <button class="btn" style="padding:5px 15px; font-size:1rem;" onclick="gameManager.goHome()">🏠 首页</button>
+            <div style="font-size:1.2rem; font-weight:bold; text-align:center;" id="module-title">模块标题</div>
+            <div class="score-board">
+                ⭐ <span id="score-display">0</span>
+            </div>
+        </div>
+
+        <div class="game-content" id="content-container">
+            <!-- 动态内容将被注入这里 -->
+        </div>
+
+        <div style="height: 50px; display:flex; align-items:center; justify-content:center; color:#fff; background:rgba(0,0,0,0.2); width:100%; text-align:center;">
+            <span id="instruction-text">请选择一个任务开始！</span>
+        </div>
+    </div>
+</div>
+
+<!-- 图片放大预览弹窗 (PPT展示模式) -->
+<div id="image-viewer-modal" class="hidden">
+    <div class="viewer-content">
+        <div class="viewer-img-container">
+            <img id="viewer-img" class="viewer-img" src="" alt="预览图片">
+        </div>
+        <div class="viewer-title" id="viewer-title">图片标题</div>
+        <p class="viewer-hint">请同学们仔细观察图片，描述你看到了什么？</p>
+        <button class="btn btn-primary" onclick="gameManager.hideImageViewerAndShowTask()">🗣️ 我准备好回答了</button>
+    </div>
+</div>
+
+<!-- 任务评分弹窗 -->
+<div id="task-modal">
+    <div class="modal-content">
+        <div class="modal-type" id="modal-type">任务类型</div>
+        <div class="modal-title" id="modal-title">题目名称</div>
+        <!-- <div class="modal-desc" id="modal-desc">这里是任务描述或具体内容...</div> -->
+        
+        <div class="star-rating" id="rating-stars">
+            <span onclick="scoreSystem.setTempScore(1)">★</span>
+            <span onclick="scoreSystem.setTempScore(2)">★</span>
+            <span onclick="scoreSystem.setTempScore(3)">★</span>
+        </div>
+        
+        <button class="btn btn-success" onclick="scoreSystem.submitScore()">✅ 完成任务</button>
+        <button class="btn" style="font-size:1rem; padding: 10px 20px; border-color:#ccc; color:#888; margin-top:10px;" onclick="gameManager.closeModal()">跳过</button>
+    </div>
+</div>
+
+<!-- 奖励特效 Canvas -->
+<canvas id="reward-overlay"></canvas>
+
+<script>
+/**
+ * 游戏数据配置
+ */
+const GAME_DATA = {
+    recitation: {
+        title: "必背课文 (扭蛋机)",
+        instruction: "点击下方按钮扭一扭，背诵掉出来的课文！",
+        items: [
+            { id: 1, title: '金木水火土', desc: '一二三四五，金木水火土...' },
+            { id: 2, title: '秋天', desc: '天气凉了，树叶黄了...' },
+            { id: 3, title: '江南', desc: '江南可采莲，莲叶何田田...' },
+            { id: 4, title: '雪地里的小画家', desc: '下雪啦，下雪啦！雪地里来了一群小画家...' },
+            { id: 5, title: '对韵歌', desc: '云对雨，雪对风。花对树，鸟对虫...' },
+            { id: 6, title: '升国旗', desc: '五星红旗，我们的国旗...' },
+            { id: 7, title: '小小的船', desc: '弯弯的月儿小小的船...' },
+            { id: 8, title: '比尾巴', desc: '谁的尾巴长？谁的尾巴短？...' }
+        ]
+    },
+    accumulation: {
+        title: "日积月累 (大转盘)",
+        instruction: "点击中间的按钮转动转盘，大声朗读并解释！",
+        items: [
+            { id: 101, title: '咏鹅', desc: '鹅，鹅，鹅，曲项向天歌...' },
+            { id: 102, title: '画', desc: '远看山有色，近听水无声...' },
+            { id: 103, title: '悯农', desc: '锄禾日当午，汗滴禾下土...' },
+            { id: 104, title: '古朗月行', desc: '小时不识月，呼作白玉盘...' },
+            { id: 105, title: '种瓜得瓜', desc: '种瓜得瓜，种豆得豆。（谚语）' },
+            { id: 106, title: '前人栽树', desc: '前人栽树，后人乘凉。（谚语）' },
+            { id: 107, title: '百尺竿头', desc: '百尺竿头，更进一步。（谚语）' },
+            { id: 108, title: '一年之计', desc: '一年之计在于春，一日之计在于晨。' }
+        ]
+    },
+    speaking: {
+        title: "看图说话 (翻翻乐)",
+        instruction: "点击一张卡片，放大观察图片并进行描述！",
+        items: [
+            { id: 201, title: '场景一', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/cad938e390b14eadac50085ea68888ab.jpg' },
+            { id: 202, title: '场景二', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/148c918c71e54b98a4172f143e67136c.jpg' },
+            { id: 203, title: '场景三', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/f8809bf34e124a2c9818902efbb3f75f.jpg' },
+            { id: 204, title: '场景四', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/230c54b6a46246b5a9a1bf6e3642bf34.jpg' },
+            { id: 205, title: '场景五', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/f01506970a444088884b51bbafcfd979.jpg' },
+            { id: 206, title: '场景六', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/9670afac33fd488ba83907b8e071b210.jpg' },
+            { id: 207, title: '场景七', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/40f141664eba4ff3bd00106150d4cb3a.jpg' },
+            { id: 208, title: '场景八', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/a99e2b696ffa4d43a98768d91ced9f1e.jpg' },
+            { id: 209, title: '场景九', desc: '请仔细观察图片，描述你看到了什么', icon: 'https://guonei-cos.koocdn.com/common/d09e327b62d14b6eb4358f81125c2d7e.jpg' }
+        ]
+    }
+};
+
+/**
+ * 简易音效控制器
+ */
+const AudioCtrl = {
+    ctx: null,
+    playTone(freq, type, duration) {
+        if (!this.ctx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                this.ctx = new AudioContext();
+            }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(console.error);
+        }
+        
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    },
+    click() { this.playTone(600, 'sine', 0.1); },
+    win() { 
+        this.playTone(400, 'square', 0.1);
+        setTimeout(() => this.playTone(600, 'square', 0.1), 100);
+        setTimeout(() => this.playTone(800, 'square', 0.3), 200);
+    },
+    pop() { this.playTone(300, 'triangle', 0.1); }
+};
+
+/**
+ * 游戏核心管理器
+ */
+const gameManager = {
+    state: {
+        score: 0,
+        currentModule: null,
+        currentItem: null,
+        animationId: null
+    },
+
+    init() {
+        setTimeout(() => {
+            const loader = document.getElementById('loading-screen');
+            if(loader) loader.classList.add('hidden');
+            const menu = document.getElementById('main-menu');
+            if(menu) menu.classList.remove('hidden');
+        }, 1500);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowRight') {
+                if(document.getElementById('task-modal').classList.contains('active')) {
+                    this.closeModal();
+                } else if (!document.getElementById('image-viewer-modal').classList.contains('hidden')) {
+                    this.hideImageViewerAndShowTask();
+                }
+            }
+        });
+    },
+
+    toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(console.error);
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    },
+
+    enterModule(moduleKey) {
+        AudioCtrl.click();
+        this.state.currentModule = moduleKey;
+        const moduleData = GAME_DATA[moduleKey];
+
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('game-stage').classList.remove('hidden');
+        
+        document.getElementById('module-title').innerText = moduleData.title;
+        document.getElementById('instruction-text').innerText = moduleData.instruction;
+
+        const container = document.getElementById('content-container');
+        container.innerHTML = ''; 
+
+        if (moduleKey === 'recitation') {
+            this.initGacha(container);
+        } else if (moduleKey === 'accumulation') {
+            this.initWheel(container);
+        } else if (moduleKey === 'speaking') {
+            this.initCards(container);
+        }
+    },
+
+    goHome() {
+        AudioCtrl.click();
+        
+        // 停止动画循环
+        if (this.state.animationId) {
+            cancelAnimationFrame(this.state.animationId);
+            this.state.animationId = null;
+        }
+        particleSystem.stop();
+
+        // 彻底清空容器
+        document.getElementById('content-container').innerHTML = '';
+        
+        // 隐藏所有模态框
+        document.getElementById('task-modal').classList.remove('active');
+        document.getElementById('image-viewer-modal').classList.add('hidden');
+
+        document.getElementById('game-stage').classList.add('hidden');
+        document.getElementById('main-menu').classList.remove('hidden');
+    },
+
+    showTask(item) {
+        this.state.currentItem = item;
+        const modal = document.getElementById('task-modal');
+        document.getElementById('modal-type').innerText = GAME_DATA[this.state.currentModule].title;
+        document.getElementById('modal-title').innerText = item.title;
+        // document.getElementById('modal-desc').innerText = item.desc;
+        
+        scoreSystem.tempScore = 0;
+        document.querySelectorAll('.star-rating span').forEach(s => s.classList.remove('active'));
+
+        modal.classList.add('active');
+        AudioCtrl.pop();
+    },
+
+    closeModal() {
+        document.getElementById('task-modal').classList.remove('active');
+    },
+
+    // --- 图片放大预览逻辑 ---
+    showImageViewer(item) {
+        this.state.currentItem = item;
+        const viewer = document.getElementById('image-viewer-modal');
+        
+        document.getElementById('viewer-img').src = item.icon; 
+        document.getElementById('viewer-title').innerText = item.title;
+        
+        viewer.classList.remove('hidden');
+        AudioCtrl.pop();
+    },
+
+    hideImageViewerAndShowTask() {
+        document.getElementById('image-viewer-modal').classList.add('hidden');
+        this.showTask(this.state.currentItem);
+    },
+
+    // --- 模块初始化逻辑 ---
+    
+    initGacha(container) {
+        const wrapper = document.createElement('div');
+        wrapper.id = 'gacha-container';
+        wrapper.innerHTML = `
+            <canvas id="gacha-canvas" width="360" height="500"></canvas>
+            <div class="gacha-controls">
+                <button class="btn btn-primary" id="gacha-btn">🟢 扭一扭</button>
+            </div>
+        `;
+        container.appendChild(wrapper);
+
+        const canvas = document.getElementById('gacha-canvas');
+        if(!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const balls = [];
+        const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#FF9F43', '#54A0FF'];
+
+        for(let i=0; i<8; i++) {
+            balls.push({
+                x: 180, y: 300, r: 25,
+                color: colors[i % colors.length],
+                vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10
+            });
+        }
+
+        let isShaking = false;
+
+        const loop = () => {
+            if (!document.getElementById('gacha-canvas')) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 机身
+            ctx.fillStyle = '#eee';
+            ctx.beginPath(); ctx.arc(180, 200, 160, 0, Math.PI*2); ctx.fill(); 
+            ctx.strokeStyle = '#ddd'; ctx.lineWidth = 5; ctx.stroke(); 
+            
+            // 底座
+            ctx.fillStyle = '#FF6B6B';
+            ctx.fillRect(60, 320, 240, 150);
+            ctx.fillStyle = '#222';
+            ctx.fillRect(110, 380, 140, 60);
+
+            // 球体
+            balls.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+                ctx.fillStyle = b.color;
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.beginPath(); ctx.arc(b.x-8, b.y-8, 6, 0, Math.PI*2); 
+                ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fill();
+
+                if (isShaking) {
+                    b.x += (Math.random()-0.5) * 20;
+                    b.y += (Math.random()-0.5) * 20;
+                    const dist = Math.hypot(b.x - 180, b.y - 200);
+                    if (dist > 140) { b.x = 180; b.y = 200; }
+                } else {
+                    if (b.y < 300) b.y += 2;
+                }
+            });
+
+            this.state.animationId = requestAnimationFrame(loop);
+        };
+        loop();
+
+        document.getElementById('gacha-btn').onclick = () => {
+            if(isShaking) return;
+            isShaking = true;
+            AudioCtrl.playTone(200, 'sawtooth', 0.5);
+            
+            setTimeout(() => {
+                isShaking = false;
+                const items = GAME_DATA.recitation.items;
+                const item = items[Math.floor(Math.random() * items.length)];
+                this.showTask(item);
+            }, 1500);
+        };
+    },
+
+    initWheel(container) {
+        const wrapper = document.createElement('div');
+        wrapper.id = 'wheel-container';
+        wrapper.innerHTML = `
+            <canvas id="wheel-canvas" width="400" height="400"></canvas>
+            <div class="wheel-pointer"></div>
+            <div class="wheel-btn" id="spin-btn">开始</div>
+        `;
+        container.appendChild(wrapper);
+
+        const canvas = document.getElementById('wheel-canvas');
+        if(!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const items = GAME_DATA.accumulation.items;
+        const len = items.length;
+        const arc = Math.PI * 2 / len;
+        const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF', '#FF8B94', '#98DDCA', '#D5ECC2', '#FFD3B6'];
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.translate(200, 200);
+            
+            const startAngle = -Math.PI / 2;
+
+            for(let i=0; i<len; i++) {
+                const angle = startAngle + i * arc; 
+                ctx.beginPath();
+                ctx.moveTo(0,0);
+                ctx.arc(0, 0, 190, angle, angle + arc);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.save();
+                
+                ctx.rotate(angle + arc/2);
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(items[i].title, 170, 5);
+                ctx.restore();
+            }
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+        drawWheel();
+
+        let currentRotation = 0;
+        let isSpinning = false;
+
+        document.getElementById('spin-btn').onclick = () => {
+            if(isSpinning) return;
+            isSpinning = true;
+            AudioCtrl.playTone(300, 'triangle', 0.2);
+
+            const extraRotations = 5; 
+            const randomAngle = Math.floor(Math.random() * 360);
+            const totalDegree = currentRotation + (360 * extraRotations) + randomAngle;
+            
+            canvas.style.transform = `rotate(${totalDegree}deg)`;
+            currentRotation = totalDegree;
+
+            setTimeout(() => {
+                isSpinning = false;
+                const actualRotation = totalDegree % 360;
+                const sliceDeg = 360 / len;
+                const index = Math.floor((360 - actualRotation) % 360 / sliceDeg);
+                
+                this.showTask(items[index % len]);
+            }, 4000); 
+        };
+    },
+
+    initCards(container) {
+        const grid = document.createElement('div');
+        grid.id = 'card-grid';
+        
+        const items = [...GAME_DATA.speaking.items].sort(() => 0.5 - Math.random());
+        
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-inner">
+                    <div class="card-front">?</div>
+                    <div class="card-back">
+                        <div class="card-img-container">
+                            <img class="card-img-small" src="${item.icon}" alt="缩略图">
+                        </div>
+                        <div>${item.title}</div>
+                    </div>
+                </div>
+            `;
+            card.onclick = function() {
+                if (this.classList.contains('flipped')) return;
+                AudioCtrl.click();
+                this.classList.add('flipped');
+                
+                // 等待翻转动画大部分完成后再弹出大图
+                setTimeout(() => {
+                    gameManager.showImageViewer(item);
+                }, 600);
+            };
+            grid.appendChild(card);
+        });
+        
+        container.appendChild(grid);
+    }
+};
+
+/**
+ * 积分与评价系统
+ */
+const scoreSystem = {
+    tempScore: 0,
+    
+    setTempScore(val) {
+        this.tempScore = val;
+        const stars = document.querySelectorAll('.star-rating span');
+        stars.forEach((s, i) => {
+            if(i < val) s.classList.add('active');
+            else s.classList.remove('active');
+        });
+        AudioCtrl.click();
+    },
+
+    submitScore() {
+        if(this.tempScore === 0) this.tempScore = 1; 
+        gameManager.state.score += this.tempScore;
+        document.getElementById('score-display').innerText = gameManager.state.score;
+        gameManager.closeModal();
+        
+        AudioCtrl.win();
+        particleSystem.explode();
+    }
+};
+
+/**
+ * 粒子特效系统
+ */
+const particleSystem = {
+    canvas: document.getElementById('reward-overlay'),
+    ctx: null,
+    particles: [],
+    running: false,
+    
+    init() {
+        if (!this.canvas) return;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.ctx = this.canvas.getContext('2d');
+        window.addEventListener('resize', () => {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+        });
+    },
+
+    stop() {
+        this.running = false;
+        this.particles = [];
+        if(this.ctx) this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+
+    explode() {
+        if(!this.ctx) this.init();
+        if(this.running) this.particles = [];
+        
+        for(let i=0; i<100; i++) {
+            this.particles.push({
+                x: window.innerWidth / 2,
+                y: window.innerHeight / 2,
+                vx: (Math.random() - 0.5) * 20,
+                vy: (Math.random() - 0.5) * 20,
+                life: 1.0,
+                color: `hsl(${Math.random()*360}, 100%, 50%)`,
+                size: Math.random() * 5 + 2
+            });
+        }
+        if(!this.running) this.loop();
+    },
+
+    loop() {
+        if (this.particles.length === 0) {
+            this.stop();
+            return;
+        }
+        this.running = true;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        for(let i=0; i<this.particles.length; i++) {
+            const p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.5; // 重力
+            p.life -= 0.02;
+            
+            this.ctx.fillStyle = p.color;
+            this.ctx.globalAlpha = Math.max(0, p.life);
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+            this.ctx.fill();
+        }
+
+        this.particles = this.particles.filter(p => p.life > 0);
+        
+        if(this.running) {
+            requestAnimationFrame(() => this.loop());
+        }
+    }
+};
+
+window.onload = function() {
+    gameManager.init();
+};
+
+</script>
+</body>
+</html>

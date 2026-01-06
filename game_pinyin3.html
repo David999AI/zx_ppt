@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>拼音闯关小勇士 - 语文发音版</title>
+    <style>
+        /* ==================== 基础样式重置 ==================== */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #2c3e50;
+        }
+
+        /* ==================== 层级结构 ==================== */
+        #background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 100%);
+            overflow: hidden;
+        }
+
+        .cloud {
+            position: absolute;
+            background: #fff;
+            border-radius: 50px;
+            opacity: 0.8;
+            animation: floatCloud 20s linear infinite;
+        }
+        .cloud::after, .cloud::before {
+            content: '';
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+        }
+        .cloud::after { width: 50px; height: 50px; top: -25px; left: 25px; }
+        .cloud::before { width: 40px; height: 40px; top: -15px; left: 10px; }
+        
+        @keyframes floatCloud {
+            from { transform: translateX(100vw); }
+            to { transform: translateX(-200px); }
+        }
+
+        canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* 关键：允许点击穿透到Canvas */
+        }
+
+        .ui-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto; /* 子元素恢复点击 */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(2px);
+            transition: opacity 0.3s;
+        }
+
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .btn {
+            background: #FF9800;
+            color: white;
+            border: 4px solid #F57C00;
+            border-radius: 20px;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px #bf360c;
+            transition: transform 0.1s;
+            margin: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px #bf360c;
+        }
+        .btn-green {
+            background: #4CAF50;
+            border-color: #388E3C;
+            box-shadow: 0 6px #1b5e20;
+        }
+        .btn-green:active {
+            box-shadow: 0 2px #1b5e20;
+        }
+        .btn-blue {
+            background: #2196F3;
+            border-color: #1976D2;
+            box-shadow: 0 6px #0D47A1;
+        }
+        .btn-blue:active {
+            box-shadow: 0 2px #0D47A1;
+        }
+
+        h1 {
+            font-size: 48px;
+            color: #fff;
+            text-shadow: 3px 3px 0 #3F51B5, -1px -1px 0 #3F51B5, 1px -1px 0 #3F51B5, -1px 1px 0 #3F51B5, 1px 1px 0 #3F51B5;
+            margin-bottom: 30px;
+            animation: bounce 2s infinite;
+            text-align: center;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-20px);}
+            60% {transform: translateY(-10px);}
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+        .hud-item {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            pointer-events: auto;
+        }
+        .progress-bar {
+            width: 200px;
+            height: 20px;
+            background: #ccc;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-left: 10px;
+            border: 2px solid #fff;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            max-width: 800px;
+            max-height: 60vh; /* 稍微留出空间给底部按钮 */
+            overflow-y: auto;
+        }
+        .level-card {
+            width: 70px;
+            height: 70px;
+            background: #FFC107; /* 默认全部解锁颜色 */
+            color: #fff;
+            border: 3px solid #FFA000;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            pointer-events: auto;
+            transition: transform 0.1s;
+        }
+        .level-card:active {
+            transform: scale(0.95);
+        }
+        .level-title {
+            font-size: 10px;
+            text-align: center;
+            margin-top: 2px;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+        .stars-display {
+            position: absolute;
+            bottom: -8px;
+            font-size: 10px;
+            display: flex;
+            color: #FFD700;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+            padding: 0 2px;
+        }
+
+        #result-modal {
+            background: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            border: 5px solid #FFEB3B;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .big-stars {
+            font-size: 60px;
+            margin: 20px 0;
+            color: #FFD700;
+        }
+        
+        .level-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+    
+    <!-- 严格使用 cdn.jsdelivr.net -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+
+</head>
+<body>
+
+    <!-- 背景层 -->
+    <div id="background">
+        <div class="cloud" style="top: 10%; width: 120px; height: 40px; left: -120px; animation-delay: 0s;"></div>
+        <div class="cloud" style="top: 25%; width: 180px; height: 60px; animation-duration: 25s; left: -180px; animation-delay: -5s;"></div>
+        <div class="cloud" style="top: 50%; width: 100px; height: 35px; animation-duration: 18s; left: -100px; animation-delay: -10s;"></div>
+    </div>
+
+    <!-- 游戏 Canvas -->
+    <canvas id="game-stage"></canvas>
+
+    <!-- UI 层 -->
+    <div id="ui-layer">
+        
+        <!-- 1. 开始界面 -->
+        <div id="start-screen" class="ui-screen">
+            <h1>拼音闯关小勇士</h1>
+            <h2 style="color: #FFEB3B; margin-top: -20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">一年级语文发音版</h2>
+            <button class="btn btn-green" onclick="startGameFlow()">开始冒险</button>
+            <div style="margin-top:20px; color:white; font-size:14px;">建议横屏游玩 • 开启声音</div>
+        </div>
+
+        <!-- 2. 关卡选择界面 -->
+        <div id="level-select-screen" class="ui-screen hidden">
+            <h2 style="color:white; margin-bottom:10px; font-size: 24px;">选择关卡</h2>
+            <div class="level-grid" id="level-grid-container">
+                <!-- 由JS动态生成 -->
+            </div>
+            <div class="level-controls">
+                <button class="btn btn-blue" onclick="gameApp.startRandomLevel()" style="padding: 10px 20px; font-size: 18px;">🎲 随机挑战</button>
+                <button class="btn" onclick="gameApp.showStartScreen()" style="padding: 10px 20px; font-size: 18px;">返回首页</button>
+            </div>
+        </div>
+
+        <!-- 3. 游戏内HUD -->
+        <div id="hud" class="hidden">
+            <div class="hud-item">
+                <span>🌟</span>
+                <span id="score-display" style="margin-left: 5px;">0</span>
+            </div>
+            <div class="hud-item">
+                进度: 
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+            <button class="hud-item" style="background: #e53935; cursor: pointer; border:none;" onclick="gameApp.exitLevel()">退出</button>
+        </div>
+
+        <!-- 4. 结算弹窗 -->
+        <div id="result-overlay" class="ui-screen hidden" style="background: rgba(0,0,0,0.7);">
+            <div id="result-modal">
+                <h2 id="result-title" style="color:#FF9800; font-size: 36px; margin:0;">闯关成功!</h2>
+                <div class="big-stars" id="result-stars">⭐⭐⭐</div>
+                <p id="result-msg" style="color:#666; font-size:18px;">你真是个拼音小天才！</p>
+                <div style="display:flex; justify-content:center; gap:10px;">
+                    <button class="btn" onclick="gameApp.showLevelSelect()">返回地图</button>
+                    <button id="next-level-btn" class="btn btn-green" onclick="gameApp.nextLevel()">下一关</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 全局变量定义
+        let gameApp = null;
+
+        // 工具函数：数组洗牌 (Fisher-Yates)
+        function shuffleArray(array) {
+            const newArr = [...array]; // 复制副本，不影响原数组
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        }
+
+        // 全局入口
+        function startGameFlow() {
+            if (!gameApp) {
+                gameApp = new GameApp();
+            }
+            if (gameApp) {
+                gameApp.initAudioContext();
+                gameApp.showLevelSelect();
+            }
+        }
+
+        const GAME_CONFIG = {
+            designWidth: 1024,
+            designHeight: 768,
+            colors: {
+                primary: 0xFF9800,
+                success: 0x4CAF50,
+                error: 0xF44336,
+                text: 0x333333,
+                cardBg: 0xFFFFFF
+            }
+        };
+
+        // 拼音发音映射表（关键修改：映射到汉字以获得中文发音）
+        const PINYIN_TO_HANZI = {
+            // 声母
+            "b": "播", "p": "泼", "m": "摸", "f": "佛",
+            "d": "得", "t": "特", "n": "呢", "l": "勒",
+            "g": "哥", "k": "科", "h": "喝",
+            "j": "鸡", "q": "七", "x": "西",
+            "zh": "知", "ch": "吃", "sh": "诗", "r": "日",
+            "z": "资", "c": "疵", "s": "思",
+            "y": "医", "w": "屋",
+            // 单韵母
+            "a": "啊", "o": "喔", "e": "鹅", "i": "衣", "u": "乌", "ü": "迂",
+            // 复韵母
+            "ai": "爱", "ei": "诶", "ui": "威",
+            "ao": "袄", "ou": "欧", "iu": "优",
+            "ie": "耶", "üe": "约", "er": "耳",
+            // 前鼻韵母
+            "an": "安", "en": "恩", "in": "因",
+            "un": "温", "ün": "晕",
+            // 后鼻韵母 (近似字)
+            "ang": "昂", "eng": "鞥", "ing": "英", "ong": "翁",
+            // 整体认读
+            "zhi": "知", "chi": "吃", "shi": "诗", "ri": "日",
+            "zi": "资", "ci": "疵", "si": "思",
+            "yi": "衣", "wu": "乌", "yu": "迂",
+            "ye": "耶", "yue": "约", "yuan": "冤",
+            "yin": "因", "yun": "晕", "ying": "英",
+            // 三拼和特殊
+            "gua": "瓜", "hua": "花", "xiong": "雄",
+            "gui": "龟", "lei": "雷", 
+            "ju": "居", "qu": "区", "xu": "虚",
+            "ma1": "妈", "ma2": "麻", "ma3": "马", "ma4": "骂",
+            "correct": "棒", "wrong": "不对哦"
+        };
+
+        const LEVELS = [
+            // 第一部分：声母基础
+            {
+                id: 1, title: "声母 b p m f", type: "identify",
+                content: [
+                    { audio: "b", target: "b", options: ["b", "d", "p", "q"] },
+                    { audio: "p", target: "p", options: ["p", "b", "q", "d"] },
+                    { audio: "m", target: "m", options: ["m", "n", "w", "u"] },
+                    { audio: "f", target: "f", options: ["f", "t", "l", "b"] }
+                ]
+            },
+            {
+                id: 2, title: "声母 d t n l", type: "identify",
+                content: [
+                    { audio: "d", target: "d", options: ["d", "b", "p", "q"] },
+                    { audio: "t", target: "t", options: ["t", "f", "l", "k"] },
+                    { audio: "n", target: "n", options: ["n", "m", "h", "u"] },
+                    { audio: "l", target: "l", options: ["l", "i", "t", "f"] }
+                ]
+            },
+            {
+                id: 3, title: "声母 g k h", type: "identify",
+                content: [
+                    { audio: "g", target: "g", options: ["g", "q", "d", "a"] },
+                    { audio: "k", target: "k", options: ["k", "h", "t", "x"] },
+                    { audio: "h", target: "h", options: ["h", "n", "m", "k"] }
+                ]
+            },
+            {
+                id: 4, title: "声母 j q x", type: "identify",
+                content: [
+                    { audio: "j", target: "j", options: ["j", "i", "g", "y"] },
+                    { audio: "q", target: "q", options: ["q", "p", "g", "b"] },
+                    { audio: "x", target: "x", options: ["x", "k", "h", "s"] }
+                ]
+            },
+            {
+                id: 5, title: "声母 zh ch sh r", type: "identify",
+                content: [
+                    { audio: "zh", target: "zh", options: ["zh", "z", "ch", "sh"] },
+                    { audio: "ch", target: "ch", options: ["ch", "c", "zh", "sh"] },
+                    { audio: "sh", target: "sh", options: ["sh", "s", "ch", "r"] },
+                    { audio: "r", target: "r", options: ["r", "y", "i", "l"] }
+                ]
+            },
+            {
+                id: 6, title: "声母 z c s", type: "match",
+                content: [
+                    { targetChar: "z", total: 3 },
+                    { targetChar: "c", total: 3 },
+                    { targetChar: "s", total: 3 }
+                ]
+            },
+            {
+                id: 7, title: "声母 y w", type: "identify",
+                content: [
+                    { audio: "y", target: "y", options: ["y", "i", "u", "v"] },
+                    { audio: "w", target: "w", options: ["w", "u", "m", "n"] }
+                ]
+            },
+
+            // 第二部分：韵母基础
+            {
+                id: 8, title: "单韵母 a o e", type: "identify",
+                content: [
+                    { audio: "a", target: "a", options: ["a", "o", "e", "u"] },
+                    { audio: "o", target: "o", options: ["o", "a", "e", "i"] },
+                    { audio: "e", target: "e", options: ["e", "o", "a", "u"] }
+                ]
+            },
+            {
+                id: 9, title: "单韵母 i u ü", type: "identify",
+                content: [
+                    { audio: "i", target: "i", options: ["i", "l", "j", "y"] },
+                    { audio: "u", target: "u", options: ["u", "ü", "w", "o"] },
+                    { audio: "ü", target: "ü", options: ["ü", "u", "v", "i"] }
+                ]
+            },
+            {
+                id: 10, title: "复韵母 ai ei ui", type: "match",
+                content: [
+                    { targetChar: "ai", total: 3 },
+                    { targetChar: "ei", total: 3 },
+                    { targetChar: "ui", total: 3 }
+                ]
+            },
+            {
+                id: 11, title: "复韵母 ao ou iu", type: "match",
+                content: [
+                    { targetChar: "ao", total: 3 },
+                    { targetChar: "ou", total: 3 },
+                    { targetChar: "iu", total: 3 }
+                ]
+            },
+            {
+                id: 12, title: "复韵母 ie üe er", type: "identify",
+                content: [
+                    { audio: "ie", target: "ie", options: ["ie", "ei", "er", "ye"] },
+                    { audio: "üe", target: "üe", options: ["üe", "ue", "un", "vn"] },
+                    { audio: "er", target: "er", options: ["er", "re", "en", "ai"] }
+                ]
+            },
+            {
+                id: 13, title: "前鼻韵母 an en in", type: "identify",
+                content: [
+                    { audio: "an", target: "an", options: ["an", "ang", "ai", "ao"] },
+                    { audio: "en", target: "en", options: ["en", "eng", "ei", "er"] },
+                    { audio: "in", target: "in", options: ["in", "ing", "ie", "iu"] }
+                ]
+            },
+            {
+                id: 14, title: "前鼻韵母 un ün", type: "identify",
+                content: [
+                    { audio: "un", target: "un", options: ["un", "vn", "ui", "ue"] },
+                    { audio: "ün", target: "ün", options: ["ün", "un", "in", "iu"] }
+                ]
+            },
+            {
+                id: 15, title: "后鼻韵母 ang eng ing ong", type: "match",
+                content: [
+                    { targetChar: "ang", total: 2 },
+                    { targetChar: "eng", total: 2 },
+                    { targetChar: "ing", total: 2 },
+                    { targetChar: "ong", total: 2 }
+                ]
+            },
+
+            // 第三部分：整体认读音节
+            {
+                id: 16, title: "整体认读 zhi chi shi ri", type: "identify",
+                content: [
+                    { audio: "zhi", target: "zhi", options: ["zhi", "zi", "z", "zh"] },
+                    { audio: "chi", target: "chi", options: ["chi", "ci", "c", "ch"] },
+                    { audio: "shi", target: "shi", options: ["shi", "si", "s", "sh"] },
+                    { audio: "ri", target: "ri", options: ["ri", "r", "i", "ji"] }
+                ]
+            },
+            {
+                id: 17, title: "整体认读 zi ci si", type: "match",
+                content: [
+                    { targetChar: "zi", total: 3 },
+                    { targetChar: "ci", total: 3 },
+                    { targetChar: "si", total: 3 }
+                ]
+            },
+            {
+                id: 18, title: "整体认读 yi wu yu", type: "identify",
+                content: [
+                    { audio: "yi", target: "yi", options: ["yi", "y", "i", "yin"] },
+                    { audio: "wu", target: "wu", options: ["wu", "w", "u", "un"] },
+                    { audio: "yu", target: "yu", options: ["yu", "y", "ü", "yun"] }
+                ]
+            },
+            {
+                id: 19, title: "整体认读 ye yue yuan", type: "match",
+                content: [
+                    { targetChar: "ye", total: 2 },
+                    { targetChar: "yue", total: 2 },
+                    { targetChar: "yuan", total: 2 }
+                ]
+            },
+            {
+                id: 20, title: "整体认读 yin yun ying", type: "identify",
+                content: [
+                    { audio: "yin", target: "yin", options: ["yin", "yi", "in", "ing"] },
+                    { audio: "yun", target: "yun", options: ["yun", "yu", "un", "vn"] },
+                    { audio: "ying", target: "ying", options: ["ying", "yi", "in", "ing"] }
+                ]
+            },
+
+            // 第四部分：核心规则与拼读应用
+            {
+                id: 21, title: "标调规则", type: "spell_choice",
+                content: [
+                    { target: "gui", options: ["guī", "guí", "guǐ", "guì"], display: "gui (标调在谁?)" }, 
+                    { target: "ui", options: ["iu并列标在后", "iu并列标在前"], display: "iu标调口诀" },
+                    { target: "lei", options: ["l-ei", "l-ie"], display: "累(lei)" },
+                ]
+            },
+            {
+                id: 22, title: "ü 去点规则", type: "identify",
+                content: [
+                    { audio: "ju", target: "ju", options: ["ju", "jü", "jv", "qv"] },
+                    { audio: "qu", target: "qu", options: ["qu", "qü", "qv", "xu"] },
+                    { audio: "xu", target: "xu", options: ["xu", "xü", "xi", "xiu"] }
+                ]
+            },
+            {
+                id: 23, title: "三拼音节挑战", type: "spell_choice",
+                content: [
+                    { target: "gua", options: ["g-u-a", "g-a", "gu-a"], display: "瓜(gua)" },
+                    { target: "hua", options: ["h-u-a", "h-a", "hu-a"], display: "花(hua)" },
+                    { target: "xiong", options: ["x-i-ong", "x-ong", "xi-ong"], display: "熊(xiong)" }
+                ]
+            },
+            {
+                id: 24, title: "四声调大挑战", type: "spell_choice",
+                content: [
+                    { target: "ma1", options: ["mā", "má", "mǎ", "mà"], display: "妈(一声)" },
+                    { target: "ma2", options: ["mā", "má", "mǎ", "mà"], display: "麻(二声)" },
+                    { target: "ma3", options: ["mā", "má", "mǎ", "mà"], display: "马(三声)" },
+                    { target: "ma4", options: ["mā", "má", "mǎ", "mà"], display: "骂(四声)" }
+                ]
+            }
+        ];
+
+        let userProfile = {
+            levelStars: {}
+        };
+
+        const SILENT_AUDIO = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABgdZGF0YQQAAAAAAA==';
+
+        const audioController = {
+            sounds: {},
+            init: function() {
+                try {
+                    this.sounds.base = new Howl({ src: [SILENT_AUDIO], volume: 0.1 });
+                } catch (e) {
+                    console.warn("Audio init failed:", e);
+                }
+            },
+            play: function(key) {
+                // 优先查找映射表
+                let speakText = key;
+                if (PINYIN_TO_HANZI[key]) {
+                    speakText = PINYIN_TO_HANZI[key];
+                }
+                this.speak(speakText);
+            },
+            speak: function(text) {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.8; // 稍微慢一点，更清楚
+                    utterance.pitch = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+        };
+
+        class GameApp {
+            constructor() {
+                this.app = null;
+                this.currentLevelId = 0;
+                this.currentLevelData = null;
+                this.currentQuestions = []; 
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                this.correctCount = 0;
+                this.isProcessing = false; 
+                
+                this.elements = {
+                    startScreen: document.getElementById('start-screen'),
+                    levelSelectScreen: document.getElementById('level-select-screen'),
+                    hud: document.getElementById('hud'),
+                    resultOverlay: document.getElementById('result-overlay'),
+                    scoreDisplay: document.getElementById('score-display'),
+                    progressFill: document.getElementById('progress-fill'),
+                    gameCanvas: document.getElementById('game-stage')
+                };
+
+                this.resize = this.resize.bind(this);
+                this.initPixi();
+                audioController.init();
+            }
+
+            initAudioContext() {
+                if (window.Howler && Howler.ctx && Howler.ctx.state !== 'running') {
+                    Howler.ctx.resume().then(() => {
+                        console.log('Audio Context Resumed');
+                    });
+                }
+            }
+
+            initPixi() {
+                if (typeof PIXI === 'undefined') {
+                    console.error('PIXI.js failed to load');
+                    return;
+                }
+
+                this.app = new PIXI.Application({
+                    view: this.elements.gameCanvas,
+                    width: GAME_CONFIG.designWidth,
+                    height: GAME_CONFIG.designHeight,
+                    backgroundAlpha: 0,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+
+                this.resize();
+                window.addEventListener('resize', this.resize);
+            }
+
+            resize() {
+                if (!this.app || !this.app.view) return;
+                
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                const scale = Math.min(w / GAME_CONFIG.designWidth, h / GAME_CONFIG.designHeight);
+                
+                const newWidth = GAME_CONFIG.designWidth * scale;
+                const newHeight = GAME_CONFIG.designHeight * scale;
+                
+                this.app.view.style.width = newWidth + 'px';
+                this.app.view.style.height = newHeight + 'px';
+            }
+
+            hideAllScreens() {
+                const screens = [
+                    this.elements.startScreen, 
+                    this.elements.levelSelectScreen, 
+                    this.elements.hud, 
+                    this.elements.resultOverlay
+                ];
+                screens.forEach(el => el.classList.add('hidden'));
+            }
+
+            clearStage() {
+                if(this.app && this.app.stage) {
+                    gsap.killTweensOf(this.app.stage.children);
+                    while(this.app.stage.children.length > 0){ 
+                        let child = this.app.stage.children[0];
+                        this.app.stage.removeChild(child);
+                        if(child.destroy) {
+                            child.destroy({ children: true, texture: false, baseTexture: false }); 
+                        }
+                    }
+                }
+            }
+
+            showStartScreen() {
+                this.hideAllScreens();
+                this.elements.startScreen.classList.remove('hidden');
+                this.clearStage();
+            }
+
+            showLevelSelect() {
+                this.hideAllScreens();
+                this.elements.levelSelectScreen.classList.remove('hidden');
+                this.renderLevelGrid();
+                this.clearStage();
+            }
+
+            renderLevelGrid() {
+                const container = document.getElementById('level-grid-container');
+                container.innerHTML = '';
+                
+                LEVELS.forEach(level => {
+                    // 全解锁
+                    const card = document.createElement('div');
+                    card.className = `level-card`;
+                    
+                    const numDiv = document.createElement('div');
+                    numDiv.textContent = level.id;
+                    numDiv.style.fontSize = "24px";
+                    
+                    const titleDiv = document.createElement('div');
+                    titleDiv.className = "level-title";
+                    titleDiv.textContent = level.title;
+
+                    card.appendChild(numDiv);
+                    card.appendChild(titleDiv);
+                    
+                    const stars = userProfile.levelStars[level.id] || 0;
+                    let starStr = '';
+                    for(let i=0; i<3; i++) starStr += (i < stars ? '⭐' : '☆');
+                    
+                    const starDiv = document.createElement('div');
+                    starDiv.className = 'stars-display';
+                    starDiv.textContent = starStr;
+                    card.appendChild(starDiv);
+                    card.onclick = () => this.startLevel(level.id);
+                    
+                    container.appendChild(card);
+                });
+            }
+
+            startRandomLevel() {
+                const randomIndex = Math.floor(Math.random() * LEVELS.length);
+                const randomLevelId = LEVELS[randomIndex].id;
+                this.startLevel(randomLevelId);
+            }
+
+            startLevel(levelId) {
+                this.currentLevelId = levelId;
+                this.currentLevelData = LEVELS.find(l => l.id === levelId);
+                
+                // 1. 关卡题目的顺序随机
+                if (this.currentLevelData.content) {
+                    this.currentQuestions = shuffleArray(this.currentLevelData.content);
+                } else {
+                    this.currentQuestions = [];
+                }
+
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                this.correctCount = 0;
+                this.isProcessing = false;
+
+                this.hideAllScreens();
+                this.elements.hud.classList.remove('hidden');
+                
+                this.updateHUD();
+                this.loadQuestion();
+            }
+
+            updateHUD() {
+                this.elements.scoreDisplay.textContent = this.score;
+                const total = this.currentQuestions.length || 1;
+                const progress = (this.currentQuestionIndex / total) * 100;
+                this.elements.progressFill.style.width = `${progress}%`;
+            }
+
+            loadQuestion() {
+                if(!this.app || !this.app.stage) return;
+                
+                this.clearStage();
+                this.isProcessing = false;
+                this.app.stage.eventMode = 'auto'; 
+
+                if (this.currentQuestionIndex >= this.currentQuestions.length) {
+                    this.finishLevel();
+                    return;
+                }
+
+                this.updateHUD();
+                
+                const questionData = this.currentQuestions[this.currentQuestionIndex];
+                const levelType = this.currentLevelData.type;
+
+                if (levelType === 'identify') this.renderIdentifyLevel(questionData);
+                else if (levelType === 'match') this.renderMatchLevel(questionData);
+                else if (levelType === 'spell_choice') this.renderSpellLevel(questionData);
+            }
+
+            // 玩法1: 听音选字
+            renderIdentifyLevel(data) {
+                const playBtn = this.createButton("🔊 点击听音", 512, 150, 0x2196F3);
+                playBtn.on('pointerdown', () => {
+                    audioController.play(data.audio);
+                    gsap.to(playBtn.scale, {x: 1.1, y: 1.1, duration: 0.1, yoyo: true, repeat: 1});
+                });
+                this.app.stage.addChild(playBtn);
+                
+                // 延迟播放
+                setTimeout(() => {
+                    if (this.currentQuestions[this.currentQuestionIndex] === data) {
+                        audioController.play(data.audio);
+                    }
+                }, 500);
+
+                // 2. 答案选项的顺序随机 (关键)
+                const options = shuffleArray(data.options);
+                const gap = 200;
+                const totalWidth = (options.length - 1) * gap;
+                
+                options.forEach((opt, index) => {
+                    const offsetX = 512 - totalWidth / 2;
+                    const card = this.createCard(opt, offsetX + index * gap, 400);
+                    
+                    card.on('pointerdown', () => {
+                        if (this.isProcessing) return;
+                        if (opt === data.target) this.handleAnswer(true, card);
+                        else this.handleAnswer(false, card);
+                    });
+                    this.app.stage.addChild(card);
+                });
+
+                const text = new PIXI.Text("请选出听到的拼音", {fontSize: 36, fill: 0xffffff, fontWeight: 'bold'});
+                text.anchor.set(0.5);
+                text.position.set(512, 600);
+                this.app.stage.addChild(text);
+            }
+
+            // 玩法2: 点击消除
+            renderMatchLevel(data) {
+                const targetChar = data.targetChar;
+                const totalCorrect = data.total;
+                
+                const text = new PIXI.Text(`请点击所有的 '${targetChar}'`, {fontSize: 36, fill: 0xffffff});
+                text.anchor.set(0.5);
+                text.position.set(512, 100);
+                this.app.stage.addChild(text);
+
+                const chars = ['a','o','e','i','u','ü','b','p','m','f','d','t','n','l'];
+                const bubblesData = [];
+                for(let i=0; i<totalCorrect; i++) bubblesData.push({val: targetChar, correct: true});
+                for(let i=0; i<4; i++) { 
+                    let wrong = chars[Math.floor(Math.random()*chars.length)];
+                    while(wrong === targetChar) wrong = chars[Math.floor(Math.random()*chars.length)];
+                    bubblesData.push({val: wrong, correct: false});
+                }
+                
+                // 3. 气泡生成顺序随机
+                const shuffledBubbles = shuffleArray(bubblesData);
+                
+                const positions = [
+                    {x:200, y:300}, {x:400, y:500}, {x:600, y:250}, 
+                    {x:800, y:400}, {x:500, y:600}, {x:300, y:650}, {x:700, y:550}
+                ];
+
+                let foundCount = 0;
+                const currentQIndex = this.currentQuestionIndex;
+
+                shuffledBubbles.forEach((b, i) => {
+                    if(i >= positions.length) return;
+                    
+                    const bubble = new PIXI.Container();
+                    bubble.position.set(positions[i].x, positions[i].y);
+                    
+                    const circle = new PIXI.Graphics();
+                    circle.beginFill(0xFFFFFF);
+                    circle.lineStyle(4, 0x2196F3);
+                    circle.drawCircle(0, 0, 50);
+                    circle.endFill();
+                    
+                    const label = new PIXI.Text(b.val, {fontSize: 36, fill: 0x333});
+                    label.anchor.set(0.5);
+                    
+                    bubble.addChild(circle, label);
+                    bubble.eventMode = 'static';
+                    bubble.cursor = 'pointer';
+
+                    bubble.on('pointerdown', () => {
+                        if(this.currentQuestionIndex !== currentQIndex) return; 
+
+                        if (b.correct) {
+                            if (bubble.alpha < 1) return;
+                            
+                            bubble.eventMode = 'none';
+                            circle.tint = GAME_CONFIG.colors.success;
+                            audioController.play(b.val);
+                            
+                            gsap.to(bubble.scale, {x: 0, y: 0, duration: 0.5, delay: 0.2, onComplete: () => {
+                                bubble.alpha = 0; 
+                            }});
+                            
+                            foundCount++;
+                            this.score += 10;
+                            this.elements.scoreDisplay.textContent = this.score;
+                            
+                            if (foundCount >= totalCorrect) {
+                                this.correctCount++;
+                                setTimeout(() => {
+                                    if(this.currentQuestionIndex === currentQIndex) this.nextQuestion();
+                                }, 800);
+                            }
+                        } else {
+                            audioController.play('wrong');
+                            circle.tint = GAME_CONFIG.colors.error;
+                            gsap.to(bubble, {x: bubble.x + 10, duration: 0.05, yoyo: true, repeat: 3, onComplete: () => {
+                                circle.tint = 0xFFFFFF; 
+                            }});
+                        }
+                    });
+
+                    this.app.stage.addChild(bubble);
+                    gsap.to(bubble, {y: positions[i].y - 20, duration: 2 + Math.random(), yoyo: true, repeat: -1, ease: "sine.inOut"});
+                });
+            }
+
+            // 玩法3: 拼读/规则选择题
+            renderSpellLevel(data) {
+                const wordBg = new PIXI.Graphics();
+                wordBg.beginFill(0xFFFFFF);
+                wordBg.drawRoundedRect(-200, -60, 400, 120, 20);
+                wordBg.endFill();
+                wordBg.position.set(512, 150);
+                
+                const wordText = new PIXI.Text(data.display, {fontSize: 40, fill: 0x333, align: 'center'});
+                wordText.anchor.set(0.5);
+                wordBg.addChild(wordText);
+                this.app.stage.addChild(wordBg);
+
+                // 4. 拼读选项顺序随机
+                const options = shuffleArray(data.options);
+
+                const startY = 300;
+                options.forEach((opt, index) => {
+                    const btnHeight = 70;
+                    const btn = this.createButton(opt, 512, startY + index * (btnHeight + 20), 0xFFCC80, 400, btnHeight);
+                    
+                    btn.on('pointerdown', () => {
+                        if (this.isProcessing) return;
+                        
+                        let isRight = false;
+                        if (data.target === "ui") {
+                             if (opt.includes("iu并列标在后")) isRight = true;
+                        } else if (opt === data.target) {
+                             isRight = true;
+                        } else if (opt.replace(/-/g,"") === data.target) {
+                             isRight = true;
+                        } else if (data.target === "ma1" && opt === "mā") isRight = true;
+                        else if (data.target === "ma2" && opt === "má") isRight = true;
+                        else if (data.target === "ma3" && opt === "mǎ") isRight = true;
+                        else if (data.target === "ma4" && opt === "mà") isRight = true;
+                        else if (data.target === "gui" && opt === "guī") isRight = true; 
+                        else if (data.target === "lei" && opt === "l-ei") isRight = true;
+                        else if (data.target === "gua" && opt === "g-u-a") isRight = true;
+                        else if (data.target === "hua" && opt === "h-u-a") isRight = true;
+                        else if (data.target === "xiong" && opt === "x-i-ong") isRight = true;
+
+                        this.handleAnswer(isRight, btn);
+                    });
+                    this.app.stage.addChild(btn);
+                });
+            }
+
+            createCard(textStr, x, y) {
+                const container = new PIXI.Container();
+                container.position.set(x, y);
+                
+                const bg = new PIXI.Graphics();
+                bg.beginFill(GAME_CONFIG.colors.cardBg);
+                bg.lineStyle(4, 0xCCCCCC);
+                bg.drawRoundedRect(-60, -80, 120, 160, 15);
+                bg.endFill();
+                
+                container._customBg = bg;
+
+                const shadow = new PIXI.Graphics();
+                shadow.beginFill(0x000000, 0.2);
+                shadow.drawRoundedRect(-55, -75, 120, 160, 15);
+                shadow.endFill();
+                
+                container.addChild(shadow); 
+                container.addChild(bg);
+
+                const text = new PIXI.Text(textStr, {
+                    fontSize: 50, 
+                    fill: GAME_CONFIG.colors.text,
+                    fontFamily: "Arial",
+                    fontWeight: "bold"
+                });
+                text.anchor.set(0.5);
+                container.addChild(text);
+
+                container.eventMode = 'static'; 
+                container.cursor = 'pointer';
+                container.on('pointerover', () => { if(bg) bg.tint = 0xFFF9C4; });
+                container.on('pointerout', () => { if(bg) bg.tint = 0xFFFFFF; });
+
+                return container;
+            }
+
+            createButton(label, x, y, color, w=200, h=60) {
+                const container = new PIXI.Container();
+                container.position.set(x, y);
+
+                const bg = new PIXI.Graphics();
+                bg.beginFill(color);
+                bg.drawRoundedRect(-w/2, -h/2, w, h, h/2);
+                bg.endFill();
+                
+                container._customBg = bg;
+                
+                const text = new PIXI.Text(label, {fontSize: 24, fill: 0xFFFFFF, fontWeight: 'bold'});
+                text.anchor.set(0.5);
+                
+                container.addChild(bg, text);
+                container.eventMode = 'static';
+                container.cursor = 'pointer';
+                return container;
+            }
+
+            handleAnswer(isCorrect, targetObj) {
+                if (this.isProcessing) return; 
+                
+                this.isProcessing = true;
+                this.app.stage.eventMode = 'static'; 
+                
+                const bg = targetObj._customBg || targetObj.children[0]; 
+
+                if (isCorrect) {
+                    if(bg) bg.tint = GAME_CONFIG.colors.success;
+                    gsap.to(targetObj.scale, {x: 1.1, y: 1.1, duration: 0.2, yoyo: true, repeat: 1});
+                    
+                    audioController.play('correct');
+                    this.score += 20;
+                    this.correctCount++;
+
+                    setTimeout(() => {
+                        this.nextQuestion();
+                    }, 1000);
+
+                } else {
+                    const originalTint = bg ? bg.tint : 0xFFFFFF;
+                    if(bg) bg.tint = GAME_CONFIG.colors.error;
+                    audioController.play('wrong');
+
+                    gsap.to(targetObj, {x: targetObj.x + 10, duration: 0.05, yoyo: true, repeat: 5, onComplete: () => {
+                        if(bg) bg.tint = originalTint;
+                        this.isProcessing = false;
+                        if(this.app && this.app.stage) this.app.stage.eventMode = 'auto'; 
+                    }});
+                }
+            }
+
+            nextQuestion() {
+                this.currentQuestionIndex++;
+                this.loadQuestion();
+            }
+
+            finishLevel() {
+                this.hideAllScreens();
+                this.elements.resultOverlay.classList.remove('hidden');
+                
+                let accuracy = 0;
+                if (this.currentQuestions.length > 0) {
+                     accuracy = this.correctCount / this.currentQuestions.length;
+                }
+                
+                let stars = 1;
+                if (accuracy > 0.6) stars = 2;
+                if (accuracy > 0.9) stars = 3;
+
+                const starStr = "⭐".repeat(stars);
+                document.getElementById('result-stars').textContent = starStr;
+                
+                let msg = "还需努力哦！";
+                if (stars === 2) msg = "真棒，继续加油！";
+                if (stars === 3) msg = "太厉害了，拼音小状元！";
+                document.getElementById('result-msg').textContent = msg;
+
+                userProfile.levelStars[this.currentLevelId] = Math.max(userProfile.levelStars[this.currentLevelId] || 0, stars);
+                
+                const nextBtn = document.getElementById('next-level-btn');
+                // 如果是随机进来的，下一关还是随机？或者按顺序？这里默认按顺序推荐下一关
+                if (this.currentLevelId >= LEVELS.length) {
+                    nextBtn.style.display = 'none';
+                } else {
+                    nextBtn.style.display = 'block';
+                }
+            }
+
+            nextLevel() {
+                if (this.currentLevelId < LEVELS.length) {
+                    this.startLevel(this.currentLevelId + 1);
+                } else {
+                    this.showLevelSelect();
+                }
+            }
+
+            exitLevel() {
+                this.showLevelSelect();
+            }
+        }
+
+        window.onload = () => {
+            if (!gameApp) {
+                gameApp = new GameApp();
+            }
+        };
+
+    </script>
+</body>
+</html>

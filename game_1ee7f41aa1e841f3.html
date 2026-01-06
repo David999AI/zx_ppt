@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>拼音闯关小勇士</title>
+    <style>
+        /* ==================== 基础样式重置 ==================== */
+        * {
+            box-sizing: border-box;
+            user-select: none; /* 禁止选中文本，优化触摸体验 */
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation; /* 优化点击延迟 */
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* 防止滚动 */
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-color: #2c3e50;
+        }
+
+        /* ==================== 层级结构 ==================== */
+        /* 背景层 */
+        #background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            /* 使用CSS渐变模拟卡通森林天空 */
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 100%);
+        }
+
+        /* 简单的云朵装饰 */
+        .cloud {
+            position: absolute;
+            background: #fff;
+            border-radius: 50px;
+            opacity: 0.8;
+            animation: floatCloud 20s linear infinite;
+        }
+        .cloud::after, .cloud::before {
+            content: '';
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+        }
+        .cloud::after { width: 50px; height: 50px; top: -25px; left: 25px; }
+        .cloud::before { width: 40px; height: 40px; top: -15px; left: 10px; }
+        
+        @keyframes floatCloud {
+            from { transform: translateX(100vw); }
+            to { transform: translateX(-200px); }
+        }
+
+        /* 游戏画布层 */
+        canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+
+        /* UI交互层 */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* 默认不阻挡Canvas点击，子元素单独开启 */
+        }
+
+        /* 通用UI组件 */
+        .ui-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(2px);
+            transition: opacity 0.3s;
+        }
+
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            background: #FF9800;
+            color: white;
+            border: 4px solid #F57C00;
+            border-radius: 20px;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px #bf360c;
+            transition: transform 0.1s;
+            margin: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px #bf360c;
+        }
+        .btn-green {
+            background: #4CAF50;
+            border-color: #388E3C;
+            box-shadow: 0 6px #1b5e20;
+        }
+        .btn-green:active {
+            box-shadow: 0 2px #1b5e20;
+        }
+
+        /* 标题样式 */
+        h1 {
+            font-size: 48px;
+            color: #fff;
+            text-shadow: 3px 3px 0 #3F51B5, -1px -1px 0 #3F51B5, 1px -1px 0 #3F51B5, -1px 1px 0 #3F51B5, 1px 1px 0 #3F51B5;
+            margin-bottom: 30px;
+            animation: bounce 2s infinite;
+            text-align: center;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-20px);}
+            60% {transform: translateY(-10px);}
+        }
+
+        /* HUD (抬头显示) */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+        .hud-item {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            pointer-events: auto;
+        }
+        .progress-bar {
+            width: 200px;
+            height: 20px;
+            background: #ccc;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-left: 10px;
+            border: 2px solid #fff;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* 关卡选择面板 */
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .level-card {
+            width: 80px;
+            height: 80px;
+            background: #E0E0E0;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #757575;
+            cursor: pointer;
+            position: relative;
+            pointer-events: auto;
+        }
+        .level-card.unlocked {
+            background: #FFC107;
+            color: #fff;
+            border: 3px solid #FFA000;
+        }
+        .level-card.locked {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .stars-display {
+            position: absolute;
+            bottom: -5px;
+            font-size: 12px;
+            display: flex;
+            color: #FFD700;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+        }
+
+        /* 结算弹窗 */
+        #result-modal {
+            background: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            border: 5px solid #FFEB3B;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .big-stars {
+            font-size: 60px;
+            margin: 20px 0;
+            color: #FFD700;
+        }
+
+    </style>
+    
+    <!-- 引入必要的库，严格使用 cdn.jsdelivr.net -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+
+</head>
+<body>
+
+    <!-- 背景层 -->
+    <div id="background">
+        <div class="cloud" style="top: 10%; width: 120px; height: 40px; left: -120px; animation-delay: 0s;"></div>
+        <div class="cloud" style="top: 25%; width: 180px; height: 60px; animation-duration: 25s; left: -180px; animation-delay: -5s;"></div>
+        <div class="cloud" style="top: 50%; width: 100px; height: 35px; animation-duration: 18s; left: -100px; animation-delay: -10s;"></div>
+    </div>
+
+    <!-- 游戏 Canvas -->
+    <canvas id="game-stage"></canvas>
+
+    <!-- UI 层 -->
+    <div id="ui-layer">
+        
+        <!-- 1. 开始界面 -->
+        <div id="start-screen" class="ui-screen">
+            <h1>拼音闯关小勇士</h1>
+            <button class="btn btn-green" onclick="gameApp.initAudioContext(); gameApp.showLevelSelect()">开始冒险</button>
+            <div style="margin-top:20px; color:white; font-size:14px;">建议横屏游玩 • 开启声音</div>
+        </div>
+
+        <!-- 2. 关卡选择界面 -->
+        <div id="level-select-screen" class="ui-screen hidden">
+            <h2 style="color:white; margin-bottom:20px; font-size: 30px;">选择关卡</h2>
+            <div class="level-grid" id="level-grid-container">
+                <!-- 由JS动态生成 -->
+            </div>
+            <button class="btn" onclick="gameApp.showStartScreen()" style="margin-top:20px; padding: 10px 20px; font-size: 18px;">返回</button>
+        </div>
+
+        <!-- 3. 游戏内HUD -->
+        <div id="hud" class="hidden">
+            <div class="hud-item">
+                <span>🌟</span>
+                <span id="score-display" style="margin-left: 5px;">0</span>
+            </div>
+            <div class="hud-item">
+                进度: 
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+            <button class="hud-item" style="background: #e53935; cursor: pointer; border:none;" onclick="gameApp.exitLevel()">退出</button>
+        </div>
+
+        <!-- 4. 结算弹窗 -->
+        <div id="result-overlay" class="ui-screen hidden" style="background: rgba(0,0,0,0.7);">
+            <div id="result-modal">
+                <h2 id="result-title" style="color:#FF9800; font-size: 36px; margin:0;">闯关成功!</h2>
+                <div class="big-stars" id="result-stars">⭐⭐⭐</div>
+                <p id="result-msg" style="color:#666; font-size:18px;">你真是个拼音小天才！</p>
+                <div style="display:flex; justify-content:center; gap:10px;">
+                    <button class="btn" onclick="gameApp.showLevelSelect()">返回地图</button>
+                    <button id="next-level-btn" class="btn btn-green" onclick="gameApp.nextLevel()">下一关</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /* ==================== 1. 游戏配置与数据 (GameConfig) ==================== */
+        
+        const GAME_CONFIG = {
+            designWidth: 1024,
+            designHeight: 768,
+            colors: {
+                primary: 0xFF9800,
+                success: 0x4CAF50,
+                error: 0xF44336,
+                text: 0x333333,
+                cardBg: 0xFFFFFF
+            }
+        };
+
+        // 模拟关卡数据
+        const LEVELS = [
+            {
+                id: 1,
+                title: "声母初识",
+                type: "identify", // 认读：听音选字
+                content: [
+                    { audio: "b", target: "b", options: ["b", "d", "p", "q"] },
+                    { audio: "m", target: "m", options: ["m", "n", "w", "u"] },
+                    { audio: "f", target: "f", options: ["f", "t", "l", "b"] }
+                ]
+            },
+            {
+                id: 2,
+                title: "单韵母连线",
+                type: "match", // 配对
+                content: [
+                    { targetChar: "a", total: 3 },
+                    { targetChar: "o", total: 3 }
+                ]
+            },
+            {
+                id: 3,
+                title: "拼读挑战",
+                type: "spell_choice", // 拼读：给字选音
+                content: [
+                    { target: "ba", options: ["b-a", "p-a", "d-a"], display: "爸" },
+                    { target: "ma", options: ["m-a", "n-a", "b-a"], display: "妈" },
+                    { target: "po", options: ["p-o", "b-o", "m-o"], display: "婆" }
+                ]
+            }
+        ];
+
+        // 用户存档
+        let userProfile = {
+            unlockedLevels: 1, // 当前解锁到的最高关卡ID
+            levelStars: {}     // 记录每关星星 {1: 3, 2: 2}
+        };
+
+        /* ==================== 2. 资源管理与音频 (ResourceManager) ==================== */
+
+        // 一个极短的静音 Base64 MP3，用于占位防止报错
+        const SILENT_MP3 = 'data:audio/mp3;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAbXA0MgBUWFhYAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzb21tcDQyAP/7UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+
+        const audioController = {
+            sounds: {},
+            init: function() {
+                // 正确音效 (占位)
+                this.sounds.correct = new Howl({
+                    src: [SILENT_MP3], 
+                    volume: 0.5
+                });
+                // 错误音效 (占位)
+                this.sounds.wrong = new Howl({
+                    src: [SILENT_MP3], 
+                    volume: 0.5
+                });
+                // BGM
+                this.sounds.bgm = new Howl({
+                    src: [SILENT_MP3], 
+                    loop: true,
+                    volume: 0.2
+                });
+            },
+            play: function(key) {
+                if (key === 'correct' || key === 'wrong') {
+                    // 在真实项目中播放预加载的音效
+                    // this.sounds[key].play();
+                    return;
+                }
+                
+                // 模拟拼音发音：使用浏览器自带的语音合成
+                if (key.length <= 5) {
+                    this.speak(key);
+                }
+            },
+            speak: function(text) {
+                if ('speechSynthesis' in window) {
+                    // 取消之前的发音队列，避免积压
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.8;
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+        };
+
+        /* ==================== 3. 核心游戏逻辑 (GameApp) ==================== */
+
+        class GameApp {
+            constructor() {
+                this.app = null;
+                this.currentLevelId = 0;
+                this.currentLevelData = null;
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                this.correctCount = 0;
+                
+                this.elements = {
+                    startScreen: document.getElementById('start-screen'),
+                    levelSelectScreen: document.getElementById('level-select-screen'),
+                    hud: document.getElementById('hud'),
+                    resultOverlay: document.getElementById('result-overlay'),
+                    scoreDisplay: document.getElementById('score-display'),
+                    progressFill: document.getElementById('progress-fill'),
+                    gameCanvas: document.getElementById('game-stage')
+                };
+
+                this.initPixi();
+                // 音频初始化
+                audioController.init();
+            }
+
+            // 用户点击开始时，激活音频上下文
+            initAudioContext() {
+                if (Howler && Howler.ctx && Howler.ctx.state !== 'running') {
+                    Howler.ctx.resume();
+                }
+            }
+
+            // 初始化 PixiJS
+            initPixi() {
+                this.app = new PIXI.Application({
+                    view: this.elements.gameCanvas,
+                    width: GAME_CONFIG.designWidth,
+                    height: GAME_CONFIG.designHeight,
+                    backgroundAlpha: 0, // 透明背景
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+
+                // 响应式缩放
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            resize() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                const ratio = Math.min(w / GAME_CONFIG.designWidth, h / GAME_CONFIG.designHeight);
+                
+                this.app.view.style.width = GAME_CONFIG.designWidth * ratio + 'px';
+                this.app.view.style.height = GAME_CONFIG.designHeight * ratio + 'px';
+            }
+
+            /* --- 界面切换 --- */
+            hideAllScreens() {
+                const screens = [
+                    this.elements.startScreen, 
+                    this.elements.levelSelectScreen, 
+                    this.elements.hud, 
+                    this.elements.resultOverlay
+                ];
+                screens.forEach(el => el.classList.add('hidden'));
+            }
+
+            showStartScreen() {
+                this.hideAllScreens();
+                this.elements.startScreen.classList.remove('hidden');
+                this.app.stage.removeChildren();
+            }
+
+            showLevelSelect() {
+                this.hideAllScreens();
+                this.elements.levelSelectScreen.classList.remove('hidden');
+                this.renderLevelGrid();
+            }
+
+            renderLevelGrid() {
+                const container = document.getElementById('level-grid-container');
+                container.innerHTML = '';
+                
+                LEVELS.forEach(level => {
+                    const isUnlocked = level.id <= userProfile.unlockedLevels;
+                    const card = document.createElement('div');
+                    card.className = `level-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+                    card.innerHTML = `${level.id}`;
+                    
+                    if (isUnlocked) {
+                        const stars = userProfile.levelStars[level.id] || 0;
+                        let starStr = '';
+                        for(let i=0; i<3; i++) starStr += (i < stars ? '⭐' : '☆');
+                        
+                        const starDiv = document.createElement('div');
+                        starDiv.className = 'stars-display';
+                        starDiv.textContent = starStr;
+                        card.appendChild(starDiv);
+
+                        card.onclick = () => this.startLevel(level.id);
+                    }
+                    
+                    container.appendChild(card);
+                });
+            }
+
+            /* --- 关卡流程控制 --- */
+            startLevel(levelId) {
+                this.currentLevelId = levelId;
+                this.currentLevelData = LEVELS.find(l => l.id === levelId);
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                this.correctCount = 0;
+
+                this.hideAllScreens();
+                this.elements.hud.classList.remove('hidden');
+                
+                this.updateHUD();
+                this.loadQuestion();
+            }
+
+            updateHUD() {
+                this.elements.scoreDisplay.textContent = this.score;
+                const progress = (this.currentQuestionIndex / this.currentLevelData.content.length) * 100;
+                this.elements.progressFill.style.width = `${progress}%`;
+            }
+
+            loadQuestion() {
+                this.app.stage.removeChildren(); // 清理上一题
+
+                // 检查是否结束
+                if (this.currentQuestionIndex >= this.currentLevelData.content.length) {
+                    this.finishLevel();
+                    return;
+                }
+
+                this.updateHUD();
+                
+                const questionData = this.currentLevelData.content[this.currentQuestionIndex];
+                const levelType = this.currentLevelData.type;
+
+                if (levelType === 'identify') {
+                    this.renderIdentifyLevel(questionData);
+                } else if (levelType === 'match') {
+                    this.renderMatchLevel(questionData);
+                } else if (levelType === 'spell_choice') {
+                    this.renderSpellLevel(questionData);
+                }
+            }
+
+            /* --- 玩法渲染逻辑 --- */
+
+            // 玩法1: 认读 (听音选字)
+            renderIdentifyLevel(data) {
+                // 1. 播放按钮
+                const playBtn = this.createButton("🔊 点击听音", 512, 150, 0x2196F3);
+                playBtn.on('pointerdown', () => {
+                    audioController.play(data.audio);
+                    gsap.to(playBtn.scale, {x: 1.1, y: 1.1, duration: 0.1, yoyo: true, repeat: 1});
+                });
+                this.app.stage.addChild(playBtn);
+                
+                // 自动播放
+                setTimeout(() => audioController.play(data.audio), 500);
+
+                // 2. 选项
+                const options = data.options;
+                const startX = 200;
+                const gap = 200;
+
+                options.forEach((opt, index) => {
+                    const card = this.createCard(opt, startX + index * gap, 400);
+                    
+                    card.on('pointerdown', () => {
+                        if (opt === data.target) {
+                            this.handleAnswer(true, card);
+                        } else {
+                            this.handleAnswer(false, card);
+                        }
+                    });
+
+                    this.app.stage.addChild(card);
+                });
+
+                // 提示文字
+                const text = new PIXI.Text("请选出听到的声母", {fontSize: 36, fill: 0xffffff, fontWeight: 'bold'});
+                text.anchor.set(0.5);
+                text.position.set(512, 600);
+                this.app.stage.addChild(text);
+            }
+
+            // 玩法2: 点击消除 (泡泡龙简化)
+            renderMatchLevel(data) {
+                const targetChar = data.targetChar;
+                const totalCorrect = data.total;
+                
+                const text = new PIXI.Text(`请点击所有的单韵母 '${targetChar}'`, {fontSize: 36, fill: 0xffffff});
+                text.anchor.set(0.5);
+                text.position.set(512, 100);
+                this.app.stage.addChild(text);
+
+                // 随机生成 5-6 个泡泡
+                const chars = ['a','o','e','i','u','ü'];
+                const bubblesData = [];
+                // 确保生成足够数量的正确答案
+                for(let i=0; i<totalCorrect; i++) bubblesData.push({val: targetChar, correct: true});
+                // 填充干扰项
+                for(let i=0; i<3; i++) {
+                    const wrong = chars.filter(c => c !== targetChar)[Math.floor(Math.random()*5)];
+                    bubblesData.push({val: wrong, correct: false});
+                }
+                
+                // 简单的位置分布 (实际应做碰撞检测，这里简化)
+                const positions = [
+                    {x:200, y:300}, {x:400, y:500}, {x:600, y:250}, 
+                    {x:800, y:400}, {x:500, y:600}, {x:300, y:650}
+                ];
+
+                let foundCount = 0;
+                
+                bubblesData.forEach((b, i) => {
+                    if(i >= positions.length) return;
+                    
+                    const bubble = new PIXI.Container();
+                    bubble.position.set(positions[i].x, positions[i].y);
+                    
+                    const circle = new PIXI.Graphics();
+                    circle.beginFill(0xFFFFFF);
+                    circle.lineStyle(4, 0x2196F3);
+                    circle.drawCircle(0, 0, 50);
+                    circle.endFill();
+                    
+                    const label = new PIXI.Text(b.val, {fontSize: 40, fill: 0x333});
+                    label.anchor.set(0.5);
+                    
+                    bubble.addChild(circle, label);
+                    bubble.interactive = true;
+                    bubble.cursor = 'pointer';
+
+                    bubble.on('pointerdown', () => {
+                        bubble.interactive = false; // 禁用再次点击
+                        
+                        if (b.correct) {
+                            circle.tint = GAME_CONFIG.colors.success;
+                            audioController.play(b.val);
+                            
+                            gsap.to(bubble.scale, {x: 0, y: 0, duration: 0.5, delay: 0.2}); // 消失
+                            
+                            foundCount++;
+                            this.score += 10;
+                            this.elements.scoreDisplay.textContent = this.score;
+                            
+                            if (foundCount >= totalCorrect) {
+                                this.correctCount++; // 关卡统计：此题算对
+                                setTimeout(() => this.nextQuestion(), 1000);
+                            }
+                        } else {
+                            // 错误震动
+                            audioController.play('wrong');
+                            circle.tint = GAME_CONFIG.colors.error;
+                            gsap.to(bubble, {x: bubble.x + 10, duration: 0.05, yoyo: true, repeat: 3, onComplete: () => {
+                                // 错误选项恢复交互或消失？这里选择消失
+                                gsap.to(bubble, {alpha: 0, duration: 0.5});
+                            }});
+                        }
+                    });
+
+                    this.app.stage.addChild(bubble);
+                    // 浮动动画
+                    gsap.to(bubble, {y: positions[i].y - 20, duration: 2 + Math.random(), yoyo: true, repeat: -1, ease: "sine.inOut"});
+                });
+            }
+
+            // 玩法3: 拼读
+            renderSpellLevel(data) {
+                const wordBg = new PIXI.Graphics();
+                wordBg.beginFill(0xFFFFFF);
+                wordBg.drawRoundedRect(-60, -60, 120, 120, 20);
+                wordBg.endFill();
+                wordBg.position.set(512, 200);
+                
+                const wordText = new PIXI.Text(data.display, {fontSize: 80, fill: 0x333});
+                wordText.anchor.set(0.5);
+                wordBg.addChild(wordText);
+                this.app.stage.addChild(wordBg);
+
+                const startY = 400;
+                data.options.forEach((opt, index) => {
+                    const btn = this.createButton(opt, 512, startY + index * 100, 0xFFCC80, 200, 70);
+                    btn.on('pointerdown', () => {
+                        if (opt.replace("-", "") === data.target) {
+                            this.handleAnswer(true, btn);
+                        } else {
+                            this.handleAnswer(false, btn);
+                        }
+                    });
+                    this.app.stage.addChild(btn);
+                });
+            }
+
+            /* --- 辅助构建函数 --- */
+            createCard(textStr, x, y) {
+                const container = new PIXI.Container();
+                container.position.set(x, y);
+                
+                const bg = new PIXI.Graphics();
+                bg.beginFill(GAME_CONFIG.colors.cardBg);
+                bg.lineStyle(4, 0xCCCCCC);
+                bg.drawRoundedRect(-60, -80, 120, 160, 15);
+                bg.endFill();
+                
+                // 重要：将背景对象挂载到自定义属性，方便后续变色查找
+                container._customBg = bg;
+
+                const shadow = new PIXI.Graphics();
+                shadow.beginFill(0x000000, 0.2);
+                shadow.drawRoundedRect(-55, -75, 120, 160, 15);
+                shadow.endFill();
+                
+                container.addChild(shadow); 
+                container.addChild(bg);
+
+                const text = new PIXI.Text(textStr, {
+                    fontSize: 60,
+                    fill: GAME_CONFIG.colors.text,
+                    fontFamily: "Arial"
+                });
+                text.anchor.set(0.5);
+                container.addChild(text);
+
+                container.interactive = true;
+                container.cursor = 'pointer';
+
+                // 悬停效果 (PC端)
+                container.on('pointerover', () => { bg.tint = 0xFFF9C4; });
+                container.on('pointerout', () => { bg.tint = 0xFFFFFF; });
+
+                return container;
+            }
+
+            createButton(label, x, y, color, w=200, h=60) {
+                const container = new PIXI.Container();
+                container.position.set(x, y);
+
+                const bg = new PIXI.Graphics();
+                bg.beginFill(color);
+                bg.drawRoundedRect(-w/2, -h/2, w, h, h/2);
+                bg.endFill();
+                
+                // 绑定自定义属性
+                container._customBg = bg;
+                
+                const text = new PIXI.Text(label, {fontSize: 28, fill: 0xFFFFFF, fontWeight: 'bold'});
+                text.anchor.set(0.5);
+                
+                container.addChild(bg, text);
+                container.interactive = true;
+                container.cursor = 'pointer';
+                return container;
+            }
+
+            /* --- 判定与反馈 --- */
+            handleAnswer(isCorrect, targetObj) {
+                this.app.stage.interactiveChildren = false;
+                
+                // 稳健地获取背景元素
+                const bg = targetObj._customBg || targetObj.children[0]; 
+
+                if (isCorrect) {
+                    if(bg) bg.tint = GAME_CONFIG.colors.success;
+                    gsap.to(targetObj.scale, {x: 1.2, y: 1.2, duration: 0.3, ease: "back.out(1.7)"});
+                    
+                    audioController.play('correct');
+                    this.score += 20;
+                    this.correctCount++;
+
+                    setTimeout(() => {
+                        this.app.stage.interactiveChildren = true;
+                        this.nextQuestion();
+                    }, 1000);
+
+                } else {
+                    const originalTint = bg ? bg.tint : 0xFFFFFF;
+                    if(bg) bg.tint = GAME_CONFIG.colors.error;
+                    
+                    audioController.play('wrong');
+
+                    gsap.to(targetObj, {x: targetObj.x + 10, duration: 0.05, yoyo: true, repeat: 5, onComplete: () => {
+                        if(bg) bg.tint = originalTint;
+                        this.app.stage.interactiveChildren = true;
+                    }});
+                }
+            }
+
+            nextQuestion() {
+                this.currentQuestionIndex++;
+                this.loadQuestion();
+            }
+
+            /* --- 结算 --- */
+            finishLevel() {
+                this.hideAllScreens();
+                this.elements.resultOverlay.classList.remove('hidden');
+                
+                const accuracy = this.correctCount / this.currentLevelData.content.length;
+                let stars = 1;
+                if (accuracy > 0.6) stars = 2;
+                if (accuracy > 0.9) stars = 3;
+
+                const starStr = "⭐".repeat(stars);
+                document.getElementById('result-stars').textContent = starStr;
+                
+                let msg = "还需努力哦！";
+                if (stars === 2) msg = "真棒，继续加油！";
+                if (stars === 3) msg = "太厉害了，拼音小状元！";
+                document.getElementById('result-msg').textContent = msg;
+
+                userProfile.levelStars[this.currentLevelId] = Math.max(userProfile.levelStars[this.currentLevelId] || 0, stars);
+                if (stars >= 1 && this.currentLevelId === userProfile.unlockedLevels) {
+                    userProfile.unlockedLevels++;
+                }
+
+                const nextBtn = document.getElementById('next-level-btn');
+                if (this.currentLevelId >= LEVELS.length) {
+                    nextBtn.style.display = 'none';
+                } else {
+                    nextBtn.style.display = 'block';
+                }
+            }
+
+            nextLevel() {
+                if (this.currentLevelId < LEVELS.length) {
+                    this.startLevel(this.currentLevelId + 1);
+                } else {
+                    this.showLevelSelect();
+                }
+            }
+
+            exitLevel() {
+                this.showLevelSelect();
+            }
+        }
+
+        let gameApp;
+        
+        // 尝试立即初始化
+        // Try to initialize immediately since the script is at the end of body
+        try {
+            gameApp = new GameApp();
+            window.gameApp = gameApp;
+        } catch (e) {
+            console.error("Immediate init failed, falling back to DOMContentLoaded", e);
+            document.addEventListener('DOMContentLoaded', () => {
+                if (!gameApp) {
+                    gameApp = new GameApp();
+                    window.gameApp = gameApp;
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>

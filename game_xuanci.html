@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小学语文：选字填空大闯关</title>
+    <!-- 引入 Confetti 特效库 (严格遵守 CDN 规则: cdn.jsdelivr.net) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            /* 配色方案：保持高饱和度的糖果色系 */
+            --primary-color: #FF6B6B;      /* 活力红 */
+            --secondary-color: #4ECDC4;    /* 清新绿 */
+            --accent-color: #FFD93D;       /* 明亮黄 */
+            --text-color: #2C3E50;         /* 深蓝黑 */
+            --board-bg: #FFFDF5;           /* 米黄纸张色 */
+            --success-color: #6BCB77;      /* 成功绿 */
+            --error-color: #FF6B6B;        /* 错误红 */
+            --slot-bg: #FFFFFF;            /* 填空槽背景 */
+            --font-main: "KaiTi", "STKaiti", "Microsoft YaHei", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none; 
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-main);
+            background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 99%, #FECFEF 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 95%;
+            max-width: 850px;
+            height: 95%;
+            max-height: 900px;
+            background-color: var(--board-bg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border: 8px solid #FFF;
+            border-radius: 25px;
+            box-shadow: 0 15px 35px rgba(255, 107, 107, 0.4);
+            overflow: hidden;
+        }
+
+        /* --- 头部区域 --- */
+        #header {
+            padding: 15px 20px;
+            background: #FFD93D;
+            border-bottom: 4px solid #F4C430;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap; /* 允许小屏换行 */
+            gap: 10px;
+            font-size: 1.1rem;
+            color: #5D4037;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        .level-indicator {
+            background: #FFF;
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid #5D4037;
+            font-weight: bold;
+            font-size: 1.2rem;
+            white-space: nowrap;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 15px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.6);
+            padding: 5px 15px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .score-display { color: #FF6B6B; }
+        .star-display { color: #F39C12; text-shadow: 1px 1px 0 #FFF; }
+
+        /* 小按钮样式 */
+        .btn-small {
+            background: #FFF;
+            border: 2px solid #BDC3C7;
+            border-radius: 15px;
+            padding: 5px 12px;
+            font-size: 0.9rem;
+            color: #5D4037;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 0 #BDC3C7;
+            transition: all 0.1s;
+        }
+        .btn-small:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+        .btn-restart {
+            border-color: #E74C3C;
+            color: #C0392B;
+            box-shadow: 0 2px 0 #C0392B;
+        }
+        .btn-random {
+            border-color: #3498DB;
+            color: #2980B9;
+            box-shadow: 0 2px 0 #2980B9;
+        }
+
+        /* --- 游戏主区域 --- */
+        #game-board {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+            background-image: radial-gradient(#E0E0E0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        #question-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-bottom: 20px;
+            font-size: 1.6rem;
+        }
+
+        .question-row {
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            border: 3px solid #EAEAEA;
+            box-shadow: 0 6px 0 #E0E0E0; 
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            transition: transform 0.2s;
+            line-height: 1.8;
+        }
+
+        .question-row:hover {
+            transform: translateY(-2px);
+        }
+
+        /* 填空槽位 */
+        .slot {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 3rem;
+            width: auto;
+            height: 3rem;
+            padding: 0 5px;
+            background-color: var(--slot-bg);
+            border: 3px dashed #BDC3C7;
+            margin: 0 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 1.8rem;
+            vertical-align: middle;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+            white-space: nowrap;
+        }
+
+        .slot.active {
+            border-color: var(--secondary-color);
+            border-style: solid;
+            background-color: #E0F2F1;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.4);
+        }
+
+        .slot.filled-correct {
+            color: #FFF;
+            background-color: var(--success-color);
+            border: none;
+            box-shadow: 0 4px 0 #4CA859;
+            animation: pop 0.4s ease-out;
+            cursor: default;
+        }
+
+        .slot.filled-wrong {
+            color: #FFF;
+            background-color: var(--error-color);
+            border: none;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* 选项区域 */
+        #options-area {
+            flex-shrink: 0;
+            min-height: 140px;
+            background: #4ECDC4;
+            border-top: 6px solid #3AAFA9;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* 选项卡片 */
+        .option-card {
+            min-width: 70px;
+            width: auto;
+            padding: 0 15px;
+            height: 70px;
+            background: #fff;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: var(--text-color);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 6px 0 #BDC3C7, 0 10px 10px rgba(0,0,0,0.1);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .option-card:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #BDC3C7, inset 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .option-card.selected {
+            background-color: var(--accent-color);
+            color: #5D4037;
+            box-shadow: 0 6px 0 #F39C12, 0 10px 15px rgba(243, 156, 18, 0.3);
+            transform: translateY(-8px);
+        }
+
+        /* --- 弹窗/遮罩层 --- */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(44, 62, 80, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .overlay.active { display: flex; }
+
+        .modal-box {
+            background: #fff;
+            color: var(--text-color);
+            padding: 30px;
+            border-radius: 25px;
+            width: 90%;
+            max-width: 420px;
+            border: 6px solid #4ECDC4;
+            box-shadow: 0 10px 0 #3AAFA9;
+            animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        h1 { 
+            color: var(--primary-color);
+            text-shadow: 2px 2px 0 #FFD5D5;
+            font-size: 2rem;
+            margin: 0 0 15px 0;
+        }
+        
+        h2 { margin: 0 0 15px 0; color: var(--success-color); }
+        p { margin-bottom: 25px; font-size: 1.2rem; line-height: 1.6; }
+
+        .btn {
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.4rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-weight: bold;
+            box-shadow: 0 6px 0 #D94545;
+            transition: transform 0.1s;
+            outline: none;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+        }
+
+        .btn:active { transform: translateY(6px); box-shadow: 0 0 0 #D94545; }
+        .btn-green { background: var(--secondary-color); box-shadow: 0 6px 0 #3AAFA9; }
+        .btn-green:active { box-shadow: 0 0 0 #3AAFA9; }
+
+        /* --- 动画 Keyframes --- */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.4) rotate(5deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px) rotate(-5deg); }
+            40% { transform: translateX(8px) rotate(5deg); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        /* --- 响应式适配 --- */
+        @media (min-width: 768px) {
+            #game-container {
+                height: 90vh;
+                border-radius: 30px;
+                border-width: 10px;
+            }
+            #game-board {
+                flex-direction: row;
+            }
+            #question-area { 
+                flex: 3; 
+                padding-right: 25px; 
+                border-right: 4px dashed #BDC3C7; 
+            }
+            #options-area { 
+                flex: 1; 
+                flex-direction: column; 
+                border-top: none; 
+                border-left: none;
+                background: transparent;
+                justify-content: flex-start;
+                padding-top: 60px;
+            }
+            .question-row { font-size: 2rem; padding: 25px; }
+            .slot { min-width: 4rem; height: 4rem; font-size: 2.2rem; margin: 0 10px; border-radius: 16px; border-width: 4px; }
+            .option-card { min-width: 90px; height: 90px; font-size: 2.8rem; border-radius: 20px; }
+            
+            #header { padding: 20px 30px; }
+            .btn-small { padding: 8px 15px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- 头部 -->
+    <header id="header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="level-indicator">第 <span id="current-level-num">1</span> 关</div>
+            <div class="header-controls">
+                <button type="button" class="btn-small btn-restart" onclick="game.returnToStart()" title="回到开始界面">↺ 重来</button>
+                <button type="button" class="btn-small btn-random" onclick="game.startRandomLevel()" title="随机进入一关">🎲 随机</button>
+            </div>
+        </div>
+        <div class="header-info">
+            <span class="score-display">得分: <span id="score-num">0</span></span>
+            <span class="star-display">★ x <span id="star-num">0</span></span>
+        </div>
+    </header>
+
+    <!-- 游戏区域 -->
+    <main id="game-board">
+        <div id="question-area">
+            <!-- 题目将通过 JS 动态插入 -->
+        </div>
+        <div id="options-area">
+            <!-- 选项将通过 JS 动态插入 -->
+        </div>
+    </main>
+
+    <!-- 开始界面 -->
+    <div id="start-screen" class="overlay active">
+        <div class="modal-box">
+            <h1>🎒 选字填空大闯关</h1>
+            <p>
+                小朋友，欢迎来到汉字乐园！<br>
+                这次有更多长得很像的字宝宝。<br>
+                快来帮它们找到正确的家吧！
+            </p>
+            <button class="btn" onclick="game.start()">出发！</button>
+        </div>
+    </div>
+
+    <!-- 结算界面 -->
+    <div id="level-complete-screen" class="overlay">
+        <div class="modal-box">
+            <h2>🎉 闯关成功！</h2>
+            <p id="level-feedback">太棒了，你真聪明！</p>
+            <div style="font-size: 4rem; color: #FFD93D; margin-bottom: 20px; text-shadow: 0 4px 0 #E67E22;">
+                ★★★
+            </div>
+            <button class="btn btn-green" onclick="game.nextLevel()">下一关</button>
+        </div>
+    </div>
+
+    <!-- 通关界面 -->
+    <div id="game-end-screen" class="overlay">
+        <div class="modal-box">
+            <h1>🏆 识字小状元</h1>
+            <p>恭喜你！所有的练习题都完成了！<br>你已经是汉字小专家啦！</p>
+            <p style="font-size: 1.5rem; color: #FF6B6B; font-weight: bold;">最终得分: <span id="final-score">0</span></p>
+            <button class="btn" onclick="location.reload()">再玩一次</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * 游戏数据配置
+     */
+    const LEVELS = [
+        {
+            id: 1,
+            title: "辨析：和 / 禾",
+            options: ["和", "禾"],
+            tasks: [
+                { parts: [{text:""}, {slot:true, ans:"和"}, {text:"气"}] },
+                { parts: [{text:""}, {slot:true, ans:"禾"}, {text:"苗"}] },
+                { parts: [{text:""}, {slot:true, ans:"禾"}, {text:"田"}] },
+                { parts: [{text:""}, {slot:true, ans:"和"}, {text:"好"}] }
+            ]
+        },
+        {
+            id: 2,
+            title: "辨析：力 / 立",
+            options: ["力", "立"],
+            tasks: [
+                { parts: [{text:""}, {slot:true, ans:"立"}, {text:"正"}] },
+                { parts: [{text:""}, {slot:true, ans:"力"}, {text:"气"}] },
+                { parts: [{text:"站"}, {slot:true, ans:"立"}, {text:""}] },
+                { parts: [{text:"用"}, {slot:true, ans:"力"}, {text:""}] }
+            ]
+        },
+        {
+            id: 3,
+            title: "辨析：石 / 十",
+            options: ["石", "十"],
+            tasks: [
+                { parts: [{text:""}, {slot:true, ans:"十"}, {text:"月"}] },
+                { parts: [{text:""}, {slot:true, ans:"石"}, {text:"子"}] },
+                { parts: [{text:"山"}, {slot:true, ans:"石"}, {text:""}] },
+                { parts: [{text:"三"}, {slot:true, ans:"十"}, {text:""}] }
+            ]
+        },
+        {
+            id: 4,
+            title: "辨析：从 / 虫",
+            options: ["从", "虫"],
+            tasks: [
+                { parts: [{text:""}, {slot:true, ans:"从"}, {text:"来"}] },
+                { parts: [{text:""}, {slot:true, ans:"从"}, {text:"前"}] },
+                { parts: [{text:"小"}, {slot:true, ans:"虫"}, {text:""}] },
+                { parts: [{text:"青"}, {slot:true, ans:"虫"}, {text:""}] }
+            ]
+        },
+        {
+            id: 5,
+            title: "辨析：几 / 己",
+            options: ["几", "己"],
+            tasks: [
+                { parts: [{text:""}, {slot:true, ans:"几"}, {text:"个"}] },
+                { parts: [{text:"自"}, {slot:true, ans:"己"}, {text:""}] },
+                { parts: [{text:""}, {slot:true, ans:"几"}, {text:"天"}] },
+                { parts: [{text:""}, {slot:true, ans:"几"}, {text:"片叶子"}] } 
+            ]
+        },
+        {
+            id: 6,
+            title: "辨析：字 / 自 / 子",
+            options: ["字", "自", "子"],
+            tasks: [
+                { parts: [{text:""}, {slot:true, ans:"自"}, {text:"己"}] },
+                { parts: [{text:"儿"}, {slot:true, ans:"子"}, {text:""}] },
+                { parts: [{text:""}, {slot:true, ans:"自"}, {text:"我"}] },
+                { parts: [{text:"写"}, {slot:true, ans:"字"}, {text:""}] }
+            ]
+        },
+        {
+            id: 7,
+            title: "辨析：有 / 友",
+            options: ["有", "友"],
+            tasks: [
+                { parts: [{text:"好"}, {slot:true, ans:"友"}, {text:""}] },
+                { parts: [{text:""}, {slot:true, ans:"有"}, {text:"用"}] },
+                { parts: [{text:""}, {slot:true, ans:"有"}, {text:"无"}] },
+                { parts: [{text:"朋"}, {slot:true, ans:"友"}, {text:""}] }
+            ]
+        },
+        {
+            id: 8,
+            title: "辨析：里 / 你",
+            options: ["里", "你"],
+            tasks: [
+                { parts: [{text:""}, {slot:true, ans:"你"}, {text:"好"}] },
+                { parts: [{text:""}, {slot:true, ans:"你"}, {text:"们"}] },
+                { parts: [{text:""}, {slot:true, ans:"里"}, {text:"头"}] },
+                { parts: [{text:"船"}, {slot:true, ans:"里"}, {text:""}] }
+            ]
+        },
+        {
+            id: 9,
+            title: "句子：木 / 目",
+            options: ["木", "目"],
+            tasks: [
+                { parts: [{text:"上课时，我总是"}, {slot:true, ans:"目"}, {text:"不转睛地盯着黑板。"}] },
+                { parts: [{text:"我喜欢吃黑"}, {slot:true, ans:"木"}, {text:"耳。"}] }
+            ]
+        },
+        {
+            id: 10,
+            title: "句子：小 / 少",
+            options: ["小", "少"],
+            tasks: [
+                { parts: [{text:"这个苹果很"}, {slot:true, ans:"小"}, {text:"。"}] },
+                { parts: [{text:"今天你学了多"}, {slot:true, ans:"少"}, {text:"个生字？"}] }
+            ]
+        },
+        {
+            id: 11,
+            title: "辨析：又 / 有",
+            options: ["又", "有"],
+            tasks: [
+                { parts: [{text:"我国"}, {slot:true, ans:"有"}, {text:"五十六个民族。"}] },
+                { parts: [{text:"过了新年，我"}, {slot:true, ans:"又"}, {text:"大了一岁。"}] }
+            ]
+        },
+        {
+            id: 12,
+            title: "句子：和 / 禾",
+            options: ["和", "禾"],
+            tasks: [
+                { parts: [{text:"田里的"}, {slot:true, ans:"禾"}, {text:"苗绿油油的。"}] },
+                { parts: [{text:"我"}, {slot:true, ans:"和"}, {text:"妈妈去公园玩。"}] }
+            ]
+        },
+        {
+            id: 13,
+            title: "句子：几 / 己",
+            options: ["几", "己"],
+            tasks: [
+                { parts: [{text:"桌子上放着"}, {slot:true, ans:"几"}, {text:"本书。"}] },
+                { parts: [{text:"星期天，我自"}, {slot:true, ans:"己"}, {text:"来到了奶奶家。"}] }
+            ]
+        },
+        {
+            id: 14,
+            title: "综合：巴/把/白/自",
+            options: ["巴", "把", "白", "自"],
+            tasks: [
+                { parts: [{text:"小妹妹最喜欢玩泥"}, {slot:true, ans:"巴"}, {text:"。"}] },
+                { parts: [{text:"我"}, {slot:true, ans:"把"}, {text:""}, {slot:true, ans:"自"}, {text:"己的"}, {slot:true, ans:"白"}, {text:"裙子洗干净了。"}] }
+            ]
+        },
+        {
+            id: 15,
+            title: "综合：上/长/山",
+            options: ["上", "长", "山"],
+            tasks: [
+                { parts: [{text:"万里"}, {slot:true, ans:"长"}, {text:"城像一条巨龙。"}] },
+                { parts: [{text:""}, {slot:true, ans:"山"}, {text:""}, {slot:true, ans:"上"}, {text:"有一棵高大的松树。"}] }
+            ]
+        },
+        {
+            id: 16,
+            title: "综合：升/声/生",
+            options: ["升", "声", "生"],
+            tasks: [
+                { parts: [{text:"国歌"}, {slot:true, ans:"声"}, {text:"中，红旗徐徐"}, {slot:true, ans:"升"}, {text:"起。"}] },
+                { parts: [{text:"我们的"}, {slot:true, ans:"生"}, {text:"活多么幸福。"}] }
+            ]
+        },
+        {
+            id: 17,
+            title: "辨析：昨 / 作",
+            options: ["昨", "作"],
+            tasks: [
+                { parts: [{text:""}, {slot:true, ans:"昨"}, {text:"天一回到家，我就开始做"}, {slot:true, ans:"作"}, {text:"业。"}] }
+            ]
+        },
+        {
+            id: 18,
+            title: "选词填空：长长 / 常常",
+            options: ["长长", "常常"],
+            tasks: [
+                { parts: [{text:"大象长着"}, {slot:true, ans:"长长"}, {text:"的鼻子。"}] },
+                { parts: [{text:"哥哥"}, {slot:true, ans:"常常"}, {text:"去书店买书。"}] }
+            ]
+        },
+        {
+            id: 19,
+            title: "辨析：足 / 走",
+            options: ["足", "走"],
+            tasks: [
+                { parts: [{text:"过马路要"}, {slot:true, ans:"走"}, {text:"人行道。"}] },
+                { parts: [{text:"平平去踢"}, {slot:true, ans:"足"}, {text:"球。"}] }
+            ]
+        },
+        {
+            id: 20,
+            title: "辨析：见 / 贝",
+            options: ["见", "贝"],
+            tasks: [
+                { parts: [{text:"小红看"}, {slot:true, ans:"见"}, {text:"沙滩上有许多漂亮的"}, {slot:true, ans:"贝"}, {text:"壳。"}] }
+            ]
+        },
+        {
+            id: 21,
+            title: "辨析：把 / 巴",
+            options: ["把", "巴"],
+            tasks: [
+                { parts: [{text:"鸭子的尾"}, {slot:true, ans:"巴"}, {text:"扁。"}] },
+                { parts: [{text:"我"}, {slot:true, ans:"把"}, {text:"作业写完了。"}] }
+            ]
+        }
+    ];
+
+    /**
+     * 音频管理器 (使用 AudioContext 生成简单音效)
+     */
+    class AudioManager {
+        constructor() {
+            this.ctx = null;
+        }
+
+        init() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!this.ctx) {
+                this.ctx = new AudioContext();
+            } else if (this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
+        }
+
+        playTone(type) {
+            if (!this.ctx) return;
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
+
+            const now = this.ctx.currentTime;
+            
+            if (type === 'correct') {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } else if (type === 'wrong') {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'win') {
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                    this.playNote(freq, i * 0.15);
+                });
+            }
+        }
+
+        playNote(freq, delay) {
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            
+            const now = this.ctx.currentTime;
+            
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+            gain.gain.setValueAtTime(0.1, now + delay);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.5);
+            osc.start(now + delay);
+            osc.stop(now + delay + 0.5);
+        }
+    }
+
+    /**
+     * 游戏主逻辑控制器
+     */
+    class GameController {
+        constructor() {
+            this.state = {
+                currentLevelIndex: 0,
+                score: 0,
+                stars: 0,
+                currentSelection: null,
+                isRandomMode: false
+            };
+            this.audio = new AudioManager();
+            
+            this.dom = {
+                questionArea: document.getElementById('question-area'),
+                optionsArea: document.getElementById('options-area'),
+                levelNum: document.getElementById('current-level-num'),
+                scoreNum: document.getElementById('score-num'),
+                starNum: document.getElementById('star-num'),
+                screens: {
+                    start: document.getElementById('start-screen'),
+                    complete: document.getElementById('level-complete-screen'),
+                    end: document.getElementById('game-end-screen')
+                },
+                finalScore: document.getElementById('final-score')
+            };
+        }
+
+        start() {
+            this.audio.init(); 
+            this.dom.screens.start.classList.remove('active');
+            this.state.isRandomMode = false;
+            // 每次点击开始都从第一关开始
+            this.loadLevel(0);
+        }
+
+        loadLevel(index) {
+            if (index >= LEVELS.length) {
+                this.endGame();
+                return;
+            }
+
+            this.state.currentLevelIndex = index;
+            this.state.currentSelection = null;
+            const levelData = LEVELS[index];
+
+            this.dom.levelNum.textContent = index + 1;
+            this.renderQuestions(levelData.tasks);
+            this.renderOptions(levelData.options);
+        }
+
+        // 修改后的重来功能：回到初始界面并重置数据
+        returnToStart() {
+            this.audio.playNote(600, 0); 
+            // 重置所有游戏数据
+            this.state.score = 0;
+            this.state.stars = 0;
+            this.state.currentLevelIndex = 0;
+            this.state.isRandomMode = false;
+            this.updateUI();
+
+            // 隐藏结算或通关界面（如果有）
+            this.dom.screens.complete.classList.remove('active');
+            this.dom.screens.end.classList.remove('active');
+            
+            // 显示开始界面
+            this.dom.screens.start.classList.add('active');
+        }
+
+        // 随机关卡模式
+        startRandomLevel() {
+            this.audio.playNote(500, 0); 
+            this.audio.init(); // 确保随机开始也能初始化音频
+            this.state.isRandomMode = true;
+            // 隐藏可能存在的开始界面
+            this.dom.screens.start.classList.remove('active');
+            this.dom.screens.complete.classList.remove('active');
+            
+            let randomIndex;
+            // 循环生成随机索引，直到和当前关卡索引不同
+            do {
+                randomIndex = Math.floor(Math.random() * LEVELS.length);
+                // 边界保护：如果只有1个关卡，直接使用当前索引（避免无限循环）
+            } while (randomIndex === this.state.currentLevelIndex && LEVELS.length > 1);
+            
+            this.loadLevel(randomIndex);
+        }
+
+        renderQuestions(tasks) {
+            this.dom.questionArea.innerHTML = '';
+            
+            tasks.forEach((task, tIndex) => {
+                const row = document.createElement('div');
+                row.className = 'question-row';
+                // 使用短时动画
+                row.style.animation = `bounceIn 0.5s ease-out ${tIndex * 0.1}s both`;
+                
+                task.parts.forEach((part, pIndex) => {
+                    if (part.slot) {
+                        const slot = document.createElement('div');
+                        slot.className = 'slot';
+                        slot.dataset.ans = part.ans;
+                        slot.dataset.id = `t${tIndex}-p${pIndex}`;
+                        slot.onclick = () => this.handleSlotClick(slot);
+                        row.appendChild(slot);
+                    } else {
+                        const textSpan = document.createElement('span');
+                        textSpan.textContent = part.text;
+                        row.appendChild(textSpan);
+                    }
+                });
+                
+                this.dom.questionArea.appendChild(row);
+            });
+        }
+
+        renderOptions(options) {
+            this.dom.optionsArea.innerHTML = '';
+            
+            options.forEach(char => {
+                const card = document.createElement('div');
+                card.className = 'option-card';
+                card.textContent = char;
+                card.onclick = () => this.selectOption(card, char);
+                this.dom.optionsArea.appendChild(card);
+            });
+        }
+
+        selectOption(cardElement, char) {
+            const prev = document.querySelector('.option-card.selected');
+            if (prev) prev.classList.remove('selected');
+
+            if (this.state.currentSelection === char && prev === cardElement) {
+                this.state.currentSelection = null;
+                document.querySelectorAll('.slot:not(.filled-correct)').forEach(slot => {
+                    slot.classList.remove('active');
+                });
+                return;
+            }
+
+            this.state.currentSelection = char;
+            cardElement.classList.add('selected');
+
+            document.querySelectorAll('.slot:not(.filled-correct)').forEach(slot => {
+                slot.classList.add('active');
+            });
+            
+            this.audio.playNote(400, 0);
+        }
+
+        handleSlotClick(slot) {
+            if (slot.classList.contains('filled-correct')) return;
+
+            if (!this.state.currentSelection) {
+                this.dom.optionsArea.animate([
+                    { transform: 'translateX(0)' },
+                    { transform: 'translateX(-5px)' },
+                    { transform: 'translateX(5px)' },
+                    { transform: 'translateX(0)' }
+                ], { duration: 300 });
+                return;
+            }
+
+            const answer = slot.dataset.ans;
+            const userChoice = this.state.currentSelection;
+
+            document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
+
+            if (userChoice === answer) {
+                this.handleCorrect(slot, userChoice);
+            } else {
+                this.handleWrong(slot, userChoice);
+            }
+        }
+
+        handleCorrect(slot, char) {
+            slot.textContent = char;
+            slot.classList.remove('filled-wrong');
+            slot.classList.add('filled-correct');
+            
+            this.audio.playTone('correct');
+            
+            this.state.score += 10;
+            this.updateUI();
+
+            this.checkLevelCompletion();
+        }
+
+        handleWrong(slot, char) {
+            slot.textContent = char;
+            slot.classList.add('filled-wrong');
+            
+            this.audio.playTone('wrong');
+
+            setTimeout(() => {
+                slot.textContent = '';
+                slot.classList.remove('filled-wrong');
+                if (this.state.currentSelection) {
+                     document.querySelectorAll('.slot:not(.filled-correct)').forEach(s => s.classList.add('active'));
+                }
+            }, 600);
+        }
+
+        checkLevelCompletion() {
+            const totalSlots = document.querySelectorAll('.slot').length;
+            const filledSlots = document.querySelectorAll('.slot.filled-correct').length;
+
+            if (filledSlots === totalSlots) {
+                setTimeout(() => {
+                    this.showLevelComplete();
+                }, 800);
+            }
+        }
+
+        updateUI() {
+            this.dom.scoreNum.textContent = this.state.score;
+            this.dom.starNum.textContent = this.state.stars;
+        }
+
+        showLevelComplete() {
+            this.audio.playTone('win');
+            this.state.stars += 1;
+            this.updateUI();
+            
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 150,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#FF6B6B', '#4ECDC4', '#FFD93D']
+                });
+            }
+
+            this.dom.screens.complete.classList.add('active');
+        }
+
+        nextLevel() {
+            this.dom.screens.complete.classList.remove('active');
+            
+            if (this.state.isRandomMode) {
+                // 如果是随机模式，继续随机
+                this.startRandomLevel();
+            } else {
+                // 正常顺序模式
+                this.loadLevel(this.state.currentLevelIndex + 1);
+            }
+        }
+
+        endGame() {
+            this.dom.finalScore.textContent = this.state.score;
+            this.dom.screens.end.classList.add('active');
+            
+            if (typeof confetti === 'function') {
+                const duration = 3000;
+                const end = Date.now() + duration;
+
+                (function frame() {
+                    confetti({
+                        particleCount: 5,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#FF6B6B', '#FFD93D']
+                    });
+                    confetti({
+                        particleCount: 5,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#4ECDC4', '#FFF']
+                    });
+                
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                }());
+            }
+        }
+    }
+
+    // 启动游戏实例
+    const game = new GameController();
+
+</script>
+</body>
+</html>

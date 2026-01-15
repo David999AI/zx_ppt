@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>一年级识字大闯关 - 100字加强版</title>
+    <style>
+        /* ==================== 1. 全局样式与重置 ==================== */
+        :root {
+            --bg-color: #fdfbf2;
+            --primary-color: #ff9800;
+            --accent-green: #8bc34a;
+            --accent-blue: #4fc3f7;
+            --text-color: #5d4037;
+            --paper-line: rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: "KaiTi", "STKaiti", "楷体", serif;
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(var(--paper-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color);
+            overscroll-behavior: none; /* 防止iOS橡皮筋效果 */
+        }
+
+        #app-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 960px;
+            max-height: 540px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (orientation: portrait) {
+            #app-container {
+                max-width: 100%;
+                max-height: 100%;
+                border-radius: 0;
+            }
+        }
+
+        /* ==================== 2. 通用 UI 组件 ==================== */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* 顶部 HUD */
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0));
+        }
+
+        .hud-btn {
+            pointer-events: auto;
+            background: #ffccbc;
+            border: 2px solid #ff5722;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #d84315;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1.1rem;
+        }
+
+        .hud-score {
+            font-size: 1.8rem;
+            color: #ff9800;
+            text-shadow: 1px 1px 0 #fff;
+            font-weight: bold;
+            background: rgba(255,255,255,0.9);
+            padding: 5px 20px;
+            border-radius: 20px;
+            border: 2px solid #ffe0b2;
+        }
+
+        /* ==================== 3. 首页样式 ==================== */
+        .menu-title {
+            font-size: 3.5rem;
+            color: #d84315;
+            margin-bottom: 30px;
+            text-shadow: 3px 3px 0 #fff;
+            text-align: center;
+        }
+
+        .mode-select {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .mode-card {
+            width: 200px;
+            height: 240px;
+            background: #fff;
+            border-radius: 20px;
+            border: 5px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1);
+        }
+
+        .mode-card:hover { transform: translateY(-5px); }
+        .mode-card:active { transform: translateY(5px); box-shadow: none; }
+
+        .mode-card.trace { border-color: var(--primary-color); }
+        .mode-card.shoot { border-color: var(--accent-blue); }
+        .mode-card.puzzle { border-color: var(--accent-green); }
+
+        .mode-icon { font-size: 4.5rem; margin-bottom: 15px; }
+        .mode-name { font-size: 1.6rem; font-weight: bold; }
+
+        /* ==================== 4. 游戏区域样式 ==================== */
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        /* 田字格容器 */
+        .tian-grid {
+            width: 320px;
+            height: 320px;
+            border: 4px solid #d84315;
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: 
+                linear-gradient(#d84315 1px, transparent 1px) center/100% 1px no-repeat,
+                linear-gradient(90deg, #d84315 1px, transparent 1px) center/1px 100% no-repeat,
+                linear-gradient(45deg, transparent 49.5%, #ffccbc 50%, transparent 50.5%),
+                linear-gradient(-45deg, transparent 49.5%, #ffccbc 50%, transparent 50.5%);
+            background-size: 100% 100%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* 拼图部件 */
+        .puzzle-piece {
+            width: 100px;
+            height: 100px;
+            background: #fff;
+            border: 3px solid #5d4037;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            position: absolute;
+            cursor: grab;
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.2);
+            touch-action: none;
+            z-index: 10;
+        }
+        .puzzle-piece.locked {
+            border-color: #8bc34a;
+            background-color: #f1f8e9;
+            box-shadow: none;
+            z-index: 1;
+            cursor: default;
+        }
+        .puzzle-target-zone {
+            position: absolute;
+            border: 3px dashed #999;
+            background: rgba(255,255,255,0.4);
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    
+    <!-- 1. 首页菜单 -->
+    <div id="screen-menu" class="screen active">
+        <div class="menu-title">🐯 识字大闯关</div>
+        <div class="mode-select">
+            <div class="mode-card trace" onclick="GameManager.startMode('trace')">
+                <div class="mode-icon">✏️</div>
+                <div class="mode-name">趣味描红</div>
+                <div style="font-size:0.9rem; color:#666; margin-top:5px;">自然笔触 练好字</div>
+            </div>
+            <div class="mode-card shoot" onclick="GameManager.startMode('shoot')">
+                <div class="mode-icon">🎈</div>
+                <div class="mode-name">辨字射击</div>
+                <div style="font-size:0.9rem; color:#666; margin-top:5px;">眼疾手快 找汉字</div>
+            </div>
+            <div class="mode-card puzzle" onclick="GameManager.startMode('puzzle')">
+                <div class="mode-icon">🧩</div>
+                <div class="mode-name">拼字积木</div>
+                <div style="font-size:0.9rem; color:#666; margin-top:5px;">拆解结构 拼生字</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 游戏容器 -->
+    <div id="screen-game" class="screen">
+        <div class="hud">
+            <div class="hud-btn" onclick="GameManager.backToMenu()">⬅ 退出</div>
+            <div class="hud-score" id="score-display">⭐ 0</div>
+        </div>
+        <div id="game-area"></div>
+    </div>
+
+</div>
+
+<script>
+/**
+ * ==========================================
+ * 1. 核心数据中心 (100字加强版)
+ * ==========================================
+ * 笔画数据格式升级：
+ * 支持贝塞尔曲线，格式：[{x,y}, {type:'Q', cx, cy, x, y}] 
+ * Q 代表二次贝塞尔曲线，cx,cy为控制点
+ */
+const WORD_DB = [
+    // --- 笔画精修示范字 (贝塞尔曲线优化) ---
+    { 
+        char: "一", pinyin: "yī", trace: true, 
+        strokes: [[{x:15,y:50},{x:85,y:50}]] 
+    },
+    { 
+        char: "二", pinyin: "èr", trace: true, 
+        strokes: [
+            [{x:25,y:30},{x:75,y:30}], 
+            [{x:15,y:75},{x:85,y:75}]
+        ] 
+    },
+    { 
+        char: "三", pinyin: "sān", trace: true, 
+        strokes: [
+            [{x:25,y:25},{x:75,y:25}], 
+            [{x:30,y:50},{x:70,y:50}], 
+            [{x:15,y:80},{x:85,y:80}]
+        ] 
+    },
+    { 
+        char: "人", pinyin: "rén", trace: true, 
+        strokes: [
+            [{x:50,y:10}, {type:'Q', cx:40, cy:40, x:10, y:80}], // 撇 (自然弯曲)
+            [{x:50,y:35}, {type:'Q', cx:60, cy:55, x:90, y:80}]  // 捺 (自然弯曲)
+        ] 
+    },
+    { 
+        char: "大", pinyin: "dà", trace: true, 
+        strokes: [
+            [{x:15,y:40},{x:85,y:40}], // 横
+            [{x:50,y:10}, {type:'Q', cx:40, cy:50, x:10, y:85}], // 撇
+            [{x:50,y:40}, {type:'Q', cx:65, cy:60, x:90, y:85}]  // 捺
+        ] 
+    },
+    { 
+        char: "天", pinyin: "tiān", trace: true, 
+        strokes: [
+            [{x:25,y:30},{x:75,y:30}], 
+            [{x:10,y:55},{x:90,y:55}],
+            [{x:50,y:30}, {type:'Q', cx:35, cy:60, x:10, y:85}], 
+            [{x:50,y:55}, {type:'Q', cx:65, cy:70, x:90, y:85}]
+        ] 
+    },
+    { 
+        char: "火", pinyin: "huǒ", trace: true,
+        strokes: [
+            [{x:15,y:50}, {type:'Q', cx:20, cy:60, x:25, y:70}], // 点
+            [{x:85,y:50}, {type:'Q', cx:80, cy:60, x:75, y:70}], // 短撇
+            [{x:50,y:20}, {type:'Q', cx:40, cy:50, x:10, y:85}], // 竖撇
+            [{x:50,y:40}, {type:'Q', cx:65, cy:60, x:90, y:85}]  // 捺
+        ]
+    },
+    { 
+        char: "木", pinyin: "mù", trace: true,
+        strokes: [
+            [{x:15,y:40}, {x:85,y:40}], // 横
+            [{x:50,y:15}, {x:50,y:85}], // 竖
+            [{x:50,y:40}, {type:'Q', cx:35, cy:60, x:15, y:85}], // 撇
+            [{x:50,y:40}, {type:'Q', cx:65, cy:60, x:85, y:85}]  // 捺
+        ]
+    },
+    { 
+        char: "口", pinyin: "kǒu", trace: true,
+        strokes: [
+            [{x:25,y:25}, {x:25,y:75}], // 竖
+            [{x:25,y:25}, {x:75,y:25}, {x:75,y:75}], // 横折
+            [{x:25,y:75}, {x:75,y:75}] // 横
+        ]
+    },
+    { 
+        char: "日", pinyin: "rì", trace: true,
+        strokes: [
+            [{x:25,y:15}, {x:25,y:85}], 
+            [{x:25,y:15}, {x:75,y:15}, {x:75,y:85}], 
+            [{x:25,y:50}, {x:75,y:50}], 
+            [{x:25,y:85}, {x:75,y:85}]
+        ]
+    },
+    
+    // --- 拼图/合体字结构配置 ---
+    { char: "明", pinyin: "míng", puzzle: true, type: "lr", parts: [{text:"日", x:-1}, {text:"月", x:1}] },
+    { char: "妈", pinyin: "mā", puzzle: true, type: "lr", parts: [{text:"女", x:-1}, {text:"马", x:1}] },
+    { char: "爸", pinyin: "bà", puzzle: true, type: "tb", parts: [{text:"父", y:-1}, {text:"巴", y:1}] },
+    { char: "男", pinyin: "nán", puzzle: true, type: "tb", parts: [{text:"田", y:-1}, {text:"力", y:1}] },
+    { char: "林", pinyin: "lín", puzzle: true, type: "lr", parts: [{text:"木", x:-1}, {text:"木", x:1}] },
+    { char: "从", pinyin: "cóng", puzzle: true, type: "lr", parts: [{text:"人", x:-1}, {text:"人", x:1}] },
+    { char: "和", pinyin: "hé", puzzle: true, type: "lr", parts: [{text:"禾", x:-1}, {text:"口", x:1}] },
+    
+    // --- 100生字快速扩充 (通用配置，用于射击/认读) ---
+    // 为了代码简洁，这里列出常见字，实际运行时会随机抽取
+    { char: "山", pinyin: "shān" }, { char: "石", pinyin: "shí" }, { char: "田", pinyin: "tián" },
+    { char: "土", pinyin: "tǔ" }, { char: "水", pinyin: "shuǐ" }, { char: "云", pinyin: "yún" },
+    { char: "雨", pinyin: "yǔ" }, { char: "风", pinyin: "fēng" }, { char: "花", pinyin: "huā" },
+    { char: "鸟", pinyin: "niǎo" }, { char: "虫", pinyin: "chóng" }, { char: "六", pinyin: "liù" },
+    { char: "七", pinyin: "qī" }, { char: "八", pinyin: "bā" }, { char: "九", pinyin: "jiǔ" },
+    { char: "十", pinyin: "shí" }, { char: "上", pinyin: "shàng" }, { char: "下", pinyin: "xià" },
+    { char: "左", pinyin: "zuǒ" }, { char: "右", pinyin: "yòu" }, { char: "中", pinyin: "zhōng" },
+    { char: "耳", pinyin: "ěr" }, { char: "目", pinyin: "mù" }, { char: "手", pinyin: "shǒu" },
+    { char: "足", pinyin: "zú" }, { char: "站", pinyin: "zhàn" }, { char: "坐", pinyin: "zuò" },
+    { char: "月", pinyin: "yuè" }, { char: "儿", pinyin: "ér" }, { char: "头", pinyin: "tóu" },
+    { char: "里", pinyin: "lǐ" }, { char: "可", pinyin: "kě" }, { char: "东", pinyin: "dōng" },
+    { char: "西", pinyin: "xī" }, { char: "北", pinyin: "běi" }, { char: "南", pinyin: "nán" },
+    { char: "是", pinyin: "shì" }, { char: "女", pinyin: "nǚ" }, { char: "开", pinyin: "kāi" },
+    { char: "关", pinyin: "guān" }, { char: "正", pinyin: "zhèng" }, { char: "反", pinyin: "fǎn" },
+    { char: "多", pinyin: "duō" }, { char: "少", pinyin: "shǎo" }, { char: "小", pinyin: "xiǎo" },
+    { char: "牛", pinyin: "niú" }, { char: "羊", pinyin: "yáng" }, { char: "果", pinyin: "guǒ" },
+    { char: "心", pinyin: "xīn" }, { char: "立", pinyin: "lì" }, { char: "刀", pinyin: "dāo" },
+    { char: "力", pinyin: "lì" }, { char: "门", pinyin: "mén" }, { char: "白", pinyin: "bái" },
+    { char: "尺", pinyin: "chǐ" }, { char: "本", pinyin: "běn" }, { char: "早", pinyin: "zǎo" },
+    { char: "书", pinyin: "shū" }, { char: "牙", pinyin: "yá" }, { char: "去", pinyin: "qù" },
+    { char: "来", pinyin: "lái" }, { char: "工", pinyin: "gōng" }, { char: "厂", pinyin: "chǎng" }
+];
+
+// 辅助：获取符合模式的字库
+function getWordsForMode(mode) {
+    if (mode === 'trace') return WORD_DB.filter(w => w.trace);
+    if (mode === 'puzzle') return WORD_DB.filter(w => w.puzzle);
+    return WORD_DB; // shoot 模式所有字都行
+}
+
+// 辅助：获取干扰项
+function getDistractors(targetChar, count) {
+    const allChars = WORD_DB.map(w => w.char).filter(c => c !== targetChar);
+    // 随机打乱取前 count 个
+    return allChars.sort(() => 0.5 - Math.random()).slice(0, count);
+}
+
+/**
+ * ==========================================
+ * 2. 音频管理器
+ * ==========================================
+ */
+const AudioManager = {
+    ctx: null,
+    init: function() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    },
+    playTone: function(type) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        const now = this.ctx.currentTime;
+        if (type === 'correct') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'wrong') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+    },
+    speak: function(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-CN';
+            u.rate = 1;
+            window.speechSynthesis.speak(u);
+        }
+    }
+};
+
+/**
+ * ==========================================
+ * 3. 游戏管理器
+ * ==========================================
+ */
+const GameManager = {
+    currentMode: null,
+    currentInstance: null,
+    score: 0,
+    container: document.getElementById('game-area'),
+
+    startMode: function(mode) {
+        AudioManager.init();
+        document.getElementById('screen-menu').classList.remove('active');
+        document.getElementById('screen-game').classList.add('active');
+        this.currentMode = mode;
+        this.score = 0;
+        this.updateScore();
+        setTimeout(() => this.nextRound(), 100);
+    },
+
+    backToMenu: function() {
+        if (this.currentInstance && this.currentInstance.destroy) this.currentInstance.destroy();
+        document.getElementById('screen-game').classList.remove('active');
+        document.getElementById('screen-menu').classList.add('active');
+        AudioManager.speak("休息一下");
+    },
+
+    updateScore: function(add = 0) {
+        this.score += add;
+        document.getElementById('score-display').innerText = `⭐ ${this.score}`;
+    },
+
+    nextRound: function() {
+        const candidates = getWordsForMode(this.currentMode);
+        if (candidates.length === 0) {
+            alert("该模式暂无题目");
+            this.backToMenu();
+            return;
+        }
+        const word = candidates[Math.floor(Math.random() * candidates.length)];
+        
+        if (this.currentInstance && this.currentInstance.destroy) this.currentInstance.destroy();
+        this.container.innerHTML = '';
+
+        if (this.currentMode === 'trace') {
+            this.currentInstance = new TracingMode(this.container, word, () => this.roundComplete());
+        } else if (this.currentMode === 'shoot') {
+            this.currentInstance = new ShootingMode(this.container, word, () => this.roundComplete());
+        } else if (this.currentMode === 'puzzle') {
+            this.currentInstance = new PuzzleMode(this.container, word, () => this.roundComplete());
+        }
+    },
+
+    roundComplete: function() {
+        this.updateScore(1);
+        AudioManager.playTone('correct');
+        AudioManager.speak("太棒了！");
+        setTimeout(() => this.nextRound(), 1500);
+    }
+};
+
+/**
+ * ==========================================
+ * 4. 模式一：趣味描红 (贝塞尔曲线升级版)
+ * ==========================================
+ */
+class TracingMode {
+    constructor(container, data, onWin) {
+        this.container = container;
+        this.data = data;
+        this.onWin = onWin;
+        this.currentStroke = 0;
+        this.strokePoints = [];
+        this.isDrawing = false;
+        this.frameId = null;
+        this.init();
+    }
+
+    init() {
+        AudioManager.speak(`请写，${this.data.char}`);
+        
+        const grid = document.createElement('div');
+        grid.className = 'tian-grid';
+        this.container.appendChild(grid);
+
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = 320;
+        this.canvas.height = 320;
+        this.canvas.style.position = 'absolute';
+        this.canvas.style.left = '0';
+        this.canvas.style.top = '0';
+        grid.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext('2d');
+
+        this.bindEvents();
+        this.draw();
+    }
+
+    // 核心渲染方法
+    draw() {
+        if (!this.ctx) return;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 1. 绘制底层的楷体字作为最终参考
+        this.ctx.font = "260px KaiTi";
+        this.ctx.fillStyle = "#eee";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText(this.data.char, 160, 160);
+
+        // 2. 绘制已完成的笔画 (深色墨迹)
+        this.ctx.lineWidth = 25;
+        this.ctx.lineCap = "round";
+        this.ctx.lineJoin = "round";
+        this.ctx.strokeStyle = "#3e2723";
+        
+        for (let i = 0; i < this.currentStroke; i++) {
+            this.drawStrokePath(this.data.strokes[i]);
+        }
+
+        // 3. 绘制用户当前的笔迹
+        if (this.strokePoints.length > 0) {
+            this.ctx.strokeStyle = "#d84315"; // 橙红色
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.strokePoints[0].x, this.strokePoints[0].y);
+            for(let p of this.strokePoints) {
+                this.ctx.lineTo(p.x, p.y);
+            }
+            this.ctx.stroke();
+        }
+
+        this.frameId = requestAnimationFrame(() => this.draw());
+    }
+
+    // 支持贝塞尔曲线的路径绘制
+    drawStrokePath(points) {
+        if (!points || points.length === 0) return;
+        this.ctx.beginPath();
+        const start = this.scalePoint(points[0]);
+        this.ctx.moveTo(start.x, start.y);
+        
+        for (let i = 1; i < points.length; i++) {
+            const p = points[i];
+            const target = this.scalePoint(p);
+            
+            if (p.type === 'Q') { // 二次贝塞尔曲线
+                const control = this.scalePoint({x: p.cx, y: p.cy});
+                this.ctx.quadraticCurveTo(control.x, control.y, target.x, target.y);
+            } else {
+                this.ctx.lineTo(target.x, target.y);
+            }
+        }
+        this.ctx.stroke();
+    }
+
+    scalePoint(p) {
+        // 画布320x320，数据0-100，缩放系数3.2
+        return { x: p.x * 3.2, y: p.y * 3.2 };
+    }
+
+    bindEvents() {
+        const start = (e) => {
+            e.preventDefault();
+            this.isDrawing = true;
+            this.strokePoints = [];
+            const pos = this.getPos(e);
+            
+            // 检查起笔位置
+            const targetStroke = this.data.strokes[this.currentStroke];
+            if (!targetStroke) return;
+            const startP = this.scalePoint(targetStroke[0]);
+            
+            // 宽松判定半径 60px
+            if (this.dist(pos, startP) < 60) {
+                this.strokePoints.push(pos);
+            } else {
+                this.isDrawing = false; // 起笔太远无效
+            }
+        };
+
+        const move = (e) => {
+            if (!this.isDrawing) return;
+            e.preventDefault();
+            const pos = this.getPos(e);
+            this.strokePoints.push(pos);
+        };
+
+        const end = (e) => {
+            if (!this.isDrawing) return;
+            this.isDrawing = false;
+            
+            // 检查终笔位置
+            const targetStroke = this.data.strokes[this.currentStroke];
+            if (!targetStroke) return;
+            
+            // 获取笔画最后一点
+            const lastDataPoint = targetStroke[targetStroke.length - 1];
+            const endP = this.scalePoint(lastDataPoint);
+            const lastUserP = this.strokePoints[this.strokePoints.length - 1];
+
+            if (lastUserP && this.dist(lastUserP, endP) < 60) {
+                this.currentStroke++;
+                AudioManager.playTone('correct');
+                if (this.currentStroke >= this.data.strokes.length) {
+                    this.onWin();
+                }
+            } else {
+                // 没写到位，笔迹自动消失，不报错
+            }
+            this.strokePoints = [];
+        };
+
+        this.canvas.addEventListener('mousedown', start);
+        this.canvas.addEventListener('touchstart', start, {passive: false});
+        window.addEventListener('mousemove', move);
+        window.addEventListener('touchmove', move, {passive: false});
+        window.addEventListener('mouseup', end);
+        window.addEventListener('touchend', end, {passive: false});
+
+        this.cleanup = () => {
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('touchmove', move);
+            window.removeEventListener('mouseup', end);
+            window.removeEventListener('touchend', end);
+            if (this.frameId) cancelAnimationFrame(this.frameId);
+        };
+    }
+
+    getPos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    dist(p1, p2) {
+        return Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+    }
+    
+    destroy() { if (this.cleanup) this.cleanup(); }
+}
+
+/**
+ * ==========================================
+ * 5. 模式二：辨字射击 (大字体修复版)
+ * ==========================================
+ */
+class ShootingMode {
+    constructor(container, data, onWin) {
+        this.container = container;
+        this.data = data;
+        this.onWin = onWin;
+        this.balloons = [];
+        this.score = 0;
+        this.targetScore = 3;
+        this.animationFrameId = null;
+        this.init();
+    }
+
+    init() {
+        AudioManager.speak(`请找，${this.data.char}`);
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.container.offsetWidth || 800;
+        this.canvas.height = this.container.offsetHeight || 450;
+        this.container.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext('2d');
+        
+        this.bindEvents();
+        this.running = true;
+        this.loop(0);
+    }
+
+    spawnBalloon() {
+        const isTarget = Math.random() > 0.6;
+        const distractors = getDistractors(this.data.char, 8);
+        const text = isTarget ? this.data.char : distractors[Math.floor(Math.random() * distractors.length)];
+        
+        this.balloons.push({
+            x: Math.random() * (this.canvas.width - 100) + 50,
+            y: this.canvas.height + 60,
+            r: 50, // 气球更大
+            text: text,
+            speed: 100 + Math.random() * 80,
+            color: isTarget ? '#ffecb3' : `hsl(${Math.random()*360}, 85%, 90%)`,
+            isTarget: text === this.data.char
+        });
+    }
+
+    update(dt) {
+        this.spawnTimer = (this.spawnTimer || 0) + dt;
+        if (this.spawnTimer > 0.8) { 
+            this.spawnBalloon();
+            this.spawnTimer = 0;
+        }
+        for (let i = this.balloons.length - 1; i >= 0; i--) {
+            let b = this.balloons[i];
+            b.y -= b.speed * dt;
+            if (b.y < -70) this.balloons.splice(i, 1);
+        }
+    }
+
+    draw() {
+        if (!this.ctx) return;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 绘制背景大字提示
+        this.ctx.save();
+        this.ctx.font = "bold 250px KaiTi";
+        this.ctx.fillStyle = "rgba(0,0,0,0.04)";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText(this.data.char, this.canvas.width/2, this.canvas.height/2);
+        
+        // 顶部题目提示
+        this.ctx.font = "28px KaiTi";
+        this.ctx.fillStyle = "#d84315";
+        this.ctx.fillText(`请点击：${this.data.char} ${this.data.pinyin || ''}`, this.canvas.width/2, 80);
+        this.ctx.restore();
+
+        // 绘制气球
+        for (let b of this.balloons) {
+            this.ctx.beginPath();
+            this.ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            this.ctx.fillStyle = b.color;
+            this.ctx.fill();
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeStyle = "#fff";
+            this.ctx.stroke();
+
+            // 气球文字 (加大)
+            this.ctx.font = "bold 55px KaiTi";
+            this.ctx.fillStyle = "#4e342e";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText(b.text, b.x, b.y);
+        }
+    }
+
+    loop(timestamp) {
+        if (!this.running) return;
+        const dt = (timestamp - (this.lastTime || timestamp)) / 1000;
+        this.lastTime = timestamp;
+        if (dt < 0.5) this.update(dt);
+        this.draw();
+        this.animationFrameId = requestAnimationFrame((t) => this.loop(t));
+    }
+
+    bindEvents() {
+        this.clickHandler = (e) => {
+            e.preventDefault();
+            const rect = this.canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            // 简单的坐标映射
+            const x = (cx - rect.left) * (this.canvas.width / rect.width);
+            const y = (cy - rect.top) * (this.canvas.height / rect.height);
+
+            for (let i = this.balloons.length - 1; i >= 0; i--) {
+                let b = this.balloons[i];
+                if (Math.sqrt((x-b.x)**2 + (y-b.y)**2) < b.r + 10) {
+                    if (b.isTarget) {
+                        this.score++;
+                        AudioManager.playTone('correct');
+                        if (this.score >= this.targetScore) {
+                            this.running = false;
+                            this.onWin();
+                        }
+                    } else {
+                        AudioManager.playTone('wrong');
+                    }
+                    this.balloons.splice(i, 1);
+                    return;
+                }
+            }
+        };
+        this.canvas.addEventListener('mousedown', this.clickHandler);
+        this.canvas.addEventListener('touchstart', this.clickHandler, {passive:false});
+        
+        this.cleanup = () => {
+            this.running = false;
+            cancelAnimationFrame(this.animationFrameId);
+            if(this.canvas) {
+                this.canvas.removeEventListener('mousedown', this.clickHandler);
+                this.canvas.removeEventListener('touchstart', this.clickHandler);
+            }
+        };
+    }
+    destroy() { if (this.cleanup) this.cleanup(); }
+}
+
+/**
+ * ==========================================
+ * 6. 模式三：拼字积木
+ * ==========================================
+ */
+class PuzzleMode {
+    constructor(container, data, onWin) {
+        this.container = container;
+        this.data = data;
+        this.onWin = onWin;
+        this.listeners = [];
+        this.init();
+    }
+
+    init() {
+        AudioManager.speak("请拼出，" + this.data.char);
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'width:100%;height:100%;position:relative;';
+        this.container.appendChild(wrapper);
+
+        const grid = document.createElement('div');
+        grid.className = 'tian-grid';
+        wrapper.appendChild(grid);
+        
+        // 目标区域
+        this.targets = [];
+        this.data.parts.forEach((part) => {
+            const zone = document.createElement('div');
+            zone.className = 'puzzle-target-zone';
+            if (this.data.type === 'lr') {
+                zone.style.width = '48%'; zone.style.height = '90%';
+                zone.style.top = '5%'; zone.style.left = part.x === -1 ? '1%' : '51%';
+            } else {
+                zone.style.width = '90%'; zone.style.height = '48%';
+                zone.style.left = '5%'; zone.style.top = part.y === -1 ? '1%' : '51%';
+            }
+            grid.appendChild(zone);
+            this.targets.push({ el: zone, text: part.text, filled: false });
+        });
+
+        // 散落部件
+        setTimeout(() => {
+            const w = wrapper.offsetWidth, h = wrapper.offsetHeight;
+            this.data.parts.forEach((part, i) => {
+                const piece = document.createElement('div');
+                piece.className = 'puzzle-piece';
+                piece.innerText = part.text;
+                // 分布在左右两侧空地
+                const side = i % 2 === 0 ? 0.15 : 0.85; 
+                piece.style.left = (w * side - 50) + 'px';
+                piece.style.top = (h/2 - 50 + (Math.random()-0.5)*100) + 'px';
+                
+                wrapper.appendChild(piece);
+                this.makeDraggable(piece, part.text);
+            });
+        }, 50);
+    }
+
+    makeDraggable(el, text) {
+        let startX, startY, initL, initT, dragging = false;
+        
+        const start = (e) => {
+            if (el.classList.contains('locked')) return;
+            e.preventDefault();
+            const p = e.touches ? e.touches[0] : e;
+            startX = p.clientX; startY = p.clientY;
+            // 增加安全校验，防止 parseNaN
+            initL = parseFloat(el.style.left) || 0; 
+            initT = parseFloat(el.style.top) || 0;
+            el.style.zIndex = 100; el.style.transition = 'none';
+            dragging = true;
+        };
+        const move = (e) => {
+            if (!dragging) return;
+            e.preventDefault();
+            const p = e.touches ? e.touches[0] : e;
+            el.style.left = (initL + p.clientX - startX) + 'px';
+            el.style.top = (initT + p.clientY - startY) + 'px';
+        };
+        const end = () => {
+            if (!dragging) return;
+            dragging = false; el.style.zIndex = 10;
+            
+            // 碰撞检测
+            const r = el.getBoundingClientRect();
+            const cx = r.left + r.width/2, cy = r.top + r.height/2;
+            let matched = false;
+            
+            for(let t of this.targets) {
+                if(t.text === text && !t.filled) {
+                    const tr = t.el.getBoundingClientRect();
+                    if(cx > tr.left && cx < tr.right && cy > tr.top && cy < tr.bottom) {
+                        el.classList.add('locked');
+                        const cr = this.container.getBoundingClientRect();
+                        el.style.left = (tr.left - cr.left + (tr.width-r.width)/2) + 'px';
+                        el.style.top = (tr.top - cr.top + (tr.height-r.height)/2) + 'px';
+                        t.filled = true; matched = true;
+                        AudioManager.playTone('correct');
+                        if(this.targets.every(x=>x.filled)) this.onWin();
+                        break;
+                    }
+                }
+            }
+            if(!matched) el.style.transition = 'all 0.3s';
+        };
+        
+        el.addEventListener('mousedown', start); el.addEventListener('touchstart', start, {passive:false});
+        window.addEventListener('mousemove', move); window.addEventListener('touchmove', move, {passive:false});
+        window.addEventListener('mouseup', end); window.addEventListener('touchend', end, {passive:false});
+        
+        this.listeners.push({el, start, move, end});
+    }
+
+    destroy() {
+        this.listeners.forEach(l => {
+            window.removeEventListener('mousemove', l.move);
+            window.removeEventListener('touchmove', l.move);
+            window.removeEventListener('mouseup', l.end);
+            window.removeEventListener('touchend', l.end);
+        });
+    }
+}
+</script>
+</body>
+</html>
